@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    {% block head %} {% endblock %}
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+    <title>{% block title %}{% endblock %}</title>
+</head>
+<body>
+    <header class="header">
+        <a class="header-link first-header-link" href="/">Главная</a>
+        <a class="header-link" href="/login">Вход</a>
+        <a class="header-link" href="/register">Регистрация</a>
+        <a class="header-link" href="/computers">Панель управления</a>
+        
+        {% if user_name is not none %}
+        <div class="user"><span>{{ user_name }}</span><br/><a href="/logout">Выход</a></div>
+        {% endif %}
+    </header>
+    <!--  <div class="left-side side">s</div> -->
+    <div class="body">
+        {% block body %}{% endblock %}
+    </div>
+    <!-- <div class="right-side side">s</div> -->
+</body>
+</html>

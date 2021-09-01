@@ -1,0 +1,21 @@
+{% extends 'index.html' %}
+
+{% block body %}
+    <form method="post">
+        <input type="text" name="login" placeholder="Логин"><br/>
+        {% if errors["login_len_error"] %}
+            <span class="form-input-error">Длинна логина должна быть больше 4 и меньше 21</span><br/>
+        {% elif errors["login_sym_error"] %}
+            <span class="form-input-error">Логин состоит из букв а-я, А-Я, a-z, A-Z</span><br/>
+        {% elif errors["login_registered"] %}
+            <span class="form-input-error">Логин занят!</span><br/>
+        {% endif %}
+        <input type="password" name="password" placeholder="Пароль"><br/>
+        {% if errors["password_len_error"] %}
+            <span class="form-input-error">Длинна пароля должна быть больше 5 и меньше 51</span><br/>
+        {% elif errors["password_sym_error"] %}
+            <span class="form-input-error">Пароль состоит из букв а-я, А-Я, a-z, A-Z</span><br/>
+        {% endif %}
+        <input type="submit" title="Готово"><br/>
+    </form>
+{% endblock %}

@@ -1,0 +1,39 @@
+.computer-list {
+    background-color: white;
+    padding: 2% 5% 2% 5%
+}
+
+.computer {
+    display: inline-block;
+    background-color: thistle;
+    overflow: auto;
+    width: 200px;
+    height: 300px;
+    /* padding-left: 5%; */
+}
+
+.comp-state {
+    font-weight: bold;
+}
+
+.comp-state-enabled {
+    color: greenyellow;
+}
+
+.comp-state-disabled {
+    color: crimson;
+}
+
+.comp-arg {
+    font-weight: 600;
+    background-color: #d8bfff;
+}
+
+a.off-all-computers {
+    display: block;
+}
+
+.off-all-computers-button {
+    width: 20%;
+    margin-left: 40%;
+}

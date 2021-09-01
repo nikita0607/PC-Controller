@@ -1,0 +1,49 @@
+{% extends 'index.html' %}
+
+{% block head %}
+    <title>Computers</title>
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/computers.css') }}">
+{% endblock %}
+
+{% block body %}
+    <div class="computer-list">
+        {% if len(computers) %}
+            {% for comp in computers %}
+                <div class="computer">
+                    <p>Имя: <span class="comp-arg">{{ comp.name }}</span></p>
+                    <p>Адресс: <span class="comp-arg">{{ comp.adr }}</span></p>
+
+                    {% if comp.timeout <= 0 and not comp.disabled %}
+                        <p>Компьютер не отвечает</p>
+                    {% endif %}
+
+                    {% if not comp.disabling %}
+
+                        {% if comp.disabled %}
+                            <p class="comp-state comp-state-disabled">Выключен</p>
+                        {% endif %}
+
+                        {% if not comp.disabled %}
+                            <p class="comp-state comp-state-enabled">Включен</p>
+                            <a href="/{{ user_name }}/computers/{{ comp.adr }}/disable"><button>Выключить</button></a>
+                            {% if comp.added_message_timeout %}
+                                <span>{{ comp.added_message }}</span>
+                            {% endif %}
+                        {% endif %}
+
+                    {% endif %}
+
+                    {% if comp.disabling %}
+                        <p class="comp-state comp-state-unknown">Идет процесс выключения или произошла ошибка</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            <a class="off-all-computers" href="{{ user_name }}/computers/disable_all"><button class="button off-all-computers-button">Выключить все</button></a>
+        {% endif %}
+
+        {% if not len(computers) %}
+            <p>Нет подключенных компьютеров!</p>
+        {% endif %}
+    </div>
+
+{% endblock %}

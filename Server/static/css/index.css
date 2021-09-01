@@ -1,0 +1,54 @@
+body {
+    font-family: 'Times New Roman', Times, serif;
+    background-color: beige;
+    font-size: 2em;
+}
+
+.body {
+    display: inline-block;
+    margin-left: 15%;
+    background-color: white;
+    width: 70%;
+}
+
+.side {
+    display: inline-block;
+    background-color: blanchedalmond;
+    height: 100%;
+    width: 18%;
+}
+
+.right-side {
+    display: inline-block;
+}
+
+header {
+    align-items: flex-end;
+    padding-top: 0.2em;
+    padding-bottom: 0.2em;
+    padding-left: 1em;
+    font-size: 1em;
+    margin-bottom: 5%;
+    background-color: lightblue;
+}
+
+.first-header-link {
+    /*padding-left: 200px;*/
+}
+
+.user {
+    display: inline-block;
+    font-size: medium;
+}
+
+a {
+    text-decoration: none;
+}
+
+a:hover {
+    font-weight: 800;
+}
+
+a.header-link {
+    font-size: 2rem;
+}

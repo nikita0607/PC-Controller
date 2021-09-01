@@ -1,0 +1,13 @@
+{% extends 'index.html' %}
+
+{% block title %} Главная {% endblock %}
+
+{% block body %}
+    <h1>Добро пожаловать!</h1>
+    {% if not logged %}
+        <h3>Войдите, чтобы продолжить</h3>
+        <a class="button-login" href="/login"><button>Войти</button></a>
+    {% else %}
+        <h3>С возвращением!</h3>
+    {% endif %}
+{% endblock %}
