@@ -35,8 +35,11 @@ class API:
             data[i] = kwargs[i]
 
         req = requests.post(f"http://{self.server_address}/a", data=data)
-        return req.json()
 
+        try:
+            return req.json()
+        except json.JSONDecodeError:
+            print(f"DECODE ERROR: {req.text}")
 
 
 class App:
@@ -49,7 +52,9 @@ class App:
     def run(self):
         api = API(self.config["user_name"], self.config["computer_name"], self.config["server-ip"])
 
+        api.call_method()
         answer = api.call_method("button.add", name="disable", text="Отключить")
+        print(answer)
 
         if answer["count"] and answer["actions"][0]["type"] == "error":
             if answer["actions"][0]["error"] == "user not found":
