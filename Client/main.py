@@ -20,7 +20,7 @@ class API:
             self.server_address = server_address
         else:
             self.server_address = f"{server_address[0]}:{server_address[1]}"
-            print(self.address)
+            print(self.server_address)
 
         self.address = str(gethostbyname_ex(gethostname())[-1][0])
 
