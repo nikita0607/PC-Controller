@@ -51,8 +51,8 @@ class App:
 
         answer = api.call_method("button.add", name="disable", text="Отключить")
 
-        if answer["count"] and answer[0]["type"] == "error":
-            if answer[0]["error"] == "user not found":
+        if answer["count"] and answer["actions"]["type"] == "error":
+            if answer["actions"]["error"] == "user not found":
                 print(f"Пользователь {api.user_name} не существует!")
                 return
                 
