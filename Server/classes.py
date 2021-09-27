@@ -1,7 +1,7 @@
 import sqlite3
-import socket
 import os
 import time
+from hashlib import sha256
 
 from threading import Thread
 from time import sleep
@@ -24,45 +24,84 @@ class Log:
             for _s in args:
                 s += _s
 
-            file.write(f"{time.strftime('%D %T')} {name}: {s}/n")
+            file.write(f"{time.strftime('%D %T')} {name}: {s}\n")
+
+
+class Methods:
+
+    BUTTON_CLICK = "button.click"
+    BUTTON_ADD = "button.click"
+
+
+class Types:
+
+    ERROR = "error"
+    ERROR_NEED_ARGS = "need_args"
+
+
+class Button:
+    def __init__(self, name, text):
+        self.name = name
+        self.text = text
+        self.click_count = 0
+
+    def click(self):
+        self.click_count += 1
 
 
 class Computer:
 
-    def __init__(self, handler, adr, name):
+    def __init__(self, user_name, handler, adr, name, buttons: dict):
         self.adr = adr
         self.name = name
-        self.handler = handler
+        self.user_name = user_name
+        self.handler: "ComputerHandler" = handler
 
         self.added_message = ""
         self.added_message_timeout = 0
 
         self.timeout = 20
 
-        self.disabled = False
-        self.disabling = False
+        self.buttons = buttons
+        self.actions = []
 
-    def disable(self):
-        self.disabling = True
+    def press_button(self, button_name):
+        self.buttons[button_name].click()
 
-    def set_disabled(self):
-        self.disabled = True
-        self.disabling = False
+    def disconnect(self):
+        del self.handler.computers[self.user_name][self.adr]
 
-    def checked(self):
-        self.timeout = 20
-        self.disabled = False
+    def parse_answer(self, data: dict):
+        ret = []
+        if data["method"] == "computer.disconnect":
+            self.disconnect()
 
-    def set_added_message(self, message, timeout: int = 10):
-        self.added_message = message
-        self.added_message_timeout = timeout
+            return {"type": ""}
+
+        elif data["method"] == Methods.BUTTON_ADD:
+            if "text" not in data or "name" not in data:
+                ret.append({"type": Types.ERROR, "error": Types.ERROR_NEED_ARGS})
+            else:
+                self.buttons[data["name"]] = Button(data["name"], data["text"])
+
+        if "get_next" in data and data["get_next"]:
+            self.gen_answer(ret)
+
+        return ret
+
+    def gen_answer(self, ret):
+
+        for button_name, button in enumerate(self.buttons):
+            if button.click_count:
+                ret.append({"type": Methods.BUTTON_CLICK, "name": button_name, "count": button.click_count})
+                button.click_count = 0
+
+        return ret
 
 
-class ComputerHandler(socket.socket):
+class ComputerHandler:
 
     def __init__(self, debug=False):
-        super().__init__()
-
         self.debug = debug
         self.computers = {}
 
@@ -74,7 +113,7 @@ class ComputerHandler(socket.socket):
             sleep(5)
 
             comp_i = 0
-            for user_i in self.computers:
+            for user_i in self.computers.copy():
                 while comp_i < len(self.computers):
                     comp = self.computers[user_i][comp_i]
 
@@ -86,12 +125,12 @@ class ComputerHandler(socket.socket):
     def connection(self, user_name, adr, name):
         if user_name not in self.computers:
             self.computers[user_name] = []
-        self.computers[user_name].append(Computer(self, adr, name))
+        self.computers[user_name].append(Computer(self, user_name, adr, name))
 
     def get_computers(self, user_name):
-        return (self.computers[user_name] if user_name in self.computers else [])
+        return self.computers[user_name] if user_name in self.computers else []
 
-    def get_computer(self, user_name, adr) -> Computer:
+    def get_computer(self, user_name, adr) -> Computer or None:
         if user_name in self.computers:
             for comp in self.computers[user_name]:
                 if comp.adr == adr:
@@ -108,7 +147,10 @@ class Database:
 
             sql.execute("CREATE TABLE IF NOT EXISTS users (login, password)")
 
-    def is_user(self, login):
+    @staticmethod
+    def is_user(login):
+        login = sha256(login.encode()).hexdigest()
+
         with sqlite3.connect("database.db") as db:
             sql = db.cursor()
 
@@ -119,13 +161,16 @@ class Database:
 
             return False
 
-    def check_user(self, login, password):
+    @staticmethod
+    def check_user(login, password):
+        login, password = sha256(login.encode()).hexdigest(), sha256(password.encode()).hexdigest()
         with sqlite3.connect("database.db") as db:
             sql = db.cursor()
 
             sql.execute("SELECT * FROM users WHERE login=?", (login,))
 
             user = sql.fetchone()
+            print(login)
             if user is None or user[1] != password:
                 return False
 
@@ -137,7 +182,8 @@ class Database:
 
             if self.is_user(login):
                 return False
-
+            login, password = sha256(login.encode()).hexdigest(), sha256(password.encode()).hexdigest()
+            print(login)
             sql.execute("INSERT INTO users VALUES (?, ?)", (login, password))
 
             return True

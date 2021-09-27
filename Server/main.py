@@ -10,6 +10,8 @@ from classes import *
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = "skzhef3720t92497tyasojgke4892035ui"
+app_ip = gethostbyname_ex(gethostname())[-1][0]
+
 
 debug = True
 
@@ -134,28 +136,15 @@ def _computers():
 @app.route("/<string:user_name>/computers")
 @check_login(True)
 def computers(user_name):
-    return render_template("computers.html", computers=comp_handler.get_computers(user_name), user_name=user_name, len=len, none=None)
+    return render_template("computers.html", computers=comp_handler.get_computers(user_name), user_name=user_name,
+                           port="5000", ip=app_ip, len=len, none=None)
 
 
-@app.route("/<string:user_name>/computers/<string:adr>/disable")
+@app.route("/<string:user_name>/computers/<string:adr>/button_click/<string:button_name>")
 @check_login(True)
-def dis_comp(user_name, adr):
-    main_logger.log("Disabling computer with adress: ", adr, name=flask.session["login"])
-    comp_handler.get_computer(user_name, adr).disable()
-
-    return redirect("/computers")
-
-
-@app.route("/<string:user_name>/computers/disable_all")
-@check_login(True)
-def dis_all(user_name):
-
-    for comp in comp_handler.get_computers(user_name):
-        comp.disable()
-
-    main_logger.log("Disabling all computers", name=flask.session["login"])
-
-    return redirect("/computers")
+def button_click(user_name, adr, button_name):
+    main_logger.log("Tap button: %s" % button_name, adr, name=flask.session["login"])
+    comp_handler.get_computer(user_name, adr).press_button(button_name)
 
 
 @app.route("/a", methods=["POST", "GET"])
@@ -167,31 +156,26 @@ def _comp_connect():
 
     for i in flask.request.get_data().decode().split("&"):
         _s = i.split("=")
-        data[_s[0]] = _s[1]
+        data[_s[0]] = _s[1].replace("+", " ").replace("%21", "")
     print(data)
 
     if not database.is_user(data["user_name"]):
-        return jsonify({"type": "error", "error": "user not found"})
+        return jsonify({"count": 1, "actions": [{"type": "error", "error": "user not found"}]})
 
-    if comp_handler.get_computer(data['user_name'], data["adr"]) is not None:
-        comp = comp_handler.get_computer(data['user_name'], data["adr"])
-        comp.checked()
+    computer = comp_handler.get_computer(data['user_name'], data["adr"])
+    if computer is not None:
+        computer.checked()
+        parsed_answer = computer.parse_answer(data)
 
-        if data["disable"] == "True":
-            comp.set_disabled()
+        if isinstance(parsed_answer, dict):
+            parsed_answer = [parsed_answer]
 
-            return "Goodbye!"
-
-        if "added_message" in data:
-            comp.set_added_message(data["added_message"], 
-            (data["added_message_timeout"] if "added_message_timeout" in data else 5))
-
-        return jsonify({"type": "normal_answer", "new_connection": False, "disable": comp.disabling})
+        return jsonify({"count": len(parsed_answer), "actions": parsed_answer})
 
     else:
-        comp_handler.connection(data['user_name'], data["adr"], data["name"])
-        return jsonify({"type": "normal_answer", "new_connection": True})
+        comp_handler.connection(data['user_name'], data["adr"], data["computer_name"])
+        return jsonify({"count": 1, "actions": [{"type": "new_connection"}]})
 
 
 comp_handler.run()
-app.run(debug=debug, host=gethostbyname_ex(gethostname())[-1][0])
+app.run(debug=debug, host=app_ip)
