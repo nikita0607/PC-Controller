@@ -30,7 +30,7 @@ class Log:
 class Methods:
 
     BUTTON_CLICK = "button.click"
-    BUTTON_ADD = "button.click"
+    BUTTON_ADD = "button.add"
 
 
 class Types:
@@ -51,7 +51,7 @@ class Button:
 
 class Computer:
 
-    def __init__(self, user_name, handler, adr, name, buttons: dict):
+    def __init__(self, user_name, handler, adr, name):
         self.adr = adr
         self.name = name
         self.user_name = user_name
@@ -62,7 +62,7 @@ class Computer:
 
         self.timeout = 20
 
-        self.buttons = buttons
+        self.buttons = {}
         self.actions = []
 
     def press_button(self, button_name):
@@ -70,6 +70,9 @@ class Computer:
 
     def disconnect(self):
         del self.handler.computers[self.user_name][self.adr]
+
+    def checked(self):
+        self.timeout = 20
 
     def parse_answer(self, data: dict):
         ret = []

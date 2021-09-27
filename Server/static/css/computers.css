@@ -5,7 +5,6 @@
 
 .computer {
     display: inline-block;
-    background-color: thistle;
     overflow: auto;
     width: 200px;
     height: 300px;
@@ -17,10 +16,12 @@
 }
 
 .comp-state-enabled {
+    background-color: green;
     color: greenyellow;
 }
 
 .comp-state-disabled {
+    background-color: red;
     color: crimson;
 }
 

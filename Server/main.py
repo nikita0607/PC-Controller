@@ -146,6 +146,8 @@ def button_click(user_name, adr, button_name):
     main_logger.log("Tap button: %s" % button_name, adr, name=flask.session["login"])
     comp_handler.get_computer(user_name, adr).press_button(button_name)
 
+    return redirect("/<string:user_name>/computers")
+
 
 @app.route("/a", methods=["POST", "GET"])
 def _comp_connect():

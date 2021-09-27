@@ -10,7 +10,7 @@
         {% if len(computers) %}
             {% for comp in computers %}
                 <div class="computer"
-                     style="{% if computer.timeout <= 0 %}bg: yellow{% else %}bg: green{% endif %}">
+                     style="{% if comp.timeout <= 0 %}background-color: yellow{% else %}background-color: green{% endif %}">
 
 
                     <p>Имя: <span class="comp-arg">{{ comp.name }}</span></p>
