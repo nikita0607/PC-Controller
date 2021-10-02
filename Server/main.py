@@ -104,22 +104,25 @@ def register():
         return render_template("register.html", errors=errors, user_name=None, none=None)
 
     login, password = flask.request.form['login'], flask.request.form['password']
+    password_again = flask.request.form['password-again']
+
+    login_error = password_error = 0
 
     if len(login) > 20 or len(login) < 5:
-        errors["login_len_error"] = True
-    if len([sym for sym in login if sym not in good_syms]) > 0:
-        errors["login_sym_error"] = True
-    if not [errors[error] for error in errors].count(True):
+        login_error = 1
+    elif len([sym for sym in login if sym not in good_syms]) > 0:
+        login_error = 2
+    elif not [errors[error] for error in errors].count(True):
         if database.is_user(login):
-            errors["login_registered"] = True
+            login_error = 3
 
-    if len(password) > 50 or len(password) < 6:
-        errors["password_len_error"] = True
-    if len([sym for sym in login if sym not in good_syms]) > 0:
-        errors["password_sym_error"] = True
+    elif len(password) > 50 or len(password) < 6:
+        password_error = 1
+    elif len([sym for sym in login if sym not in good_syms]) > 0:
+        password_error = 2
 
-    if [errors[error] for error in errors].count(True):
-        return render_template("register.html", errors=errors, user_name=None, none=None)
+    if login_error or password_error:
+        return render_template("register.html", login_error=login_error, password_error=password_error, user_name=None, none=None)
 
     else:
         database.new_user(login, password)
@@ -144,9 +147,12 @@ def computers(user_name):
 @check_login(True)
 def button_click(user_name, adr, button_name):
     main_logger.log("Tap button: %s" % button_name, adr, name=flask.session["login"])
-    comp_handler.get_computer(user_name, adr).press_button(button_name)
+    comp = comp_handler.get_computer(user_name, adr)
 
-    return redirect("/<string:user_name>/computers")
+    if comp is not None:
+        comp.press_button(button_name)
+
+    return redirect("/computers")
 
 
 @app.route("/a", methods=["POST", "GET"])
@@ -154,11 +160,7 @@ def _comp_connect():
     if flask.request.method == "GET":
         return "Only for computer connection!"
 
-    data = {}
-
-    for i in flask.request.get_data().decode().split("&"):
-        _s = i.split("=")
-        data[_s[0]] = _s[1].replace("+", " ").replace("%21", "")
+    data = flask.request.get_json()
     print(data)
 
     if not database.is_user(data["user_name"]):

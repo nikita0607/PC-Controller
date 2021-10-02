@@ -76,16 +76,20 @@ class Computer:
 
     def parse_answer(self, data: dict):
         ret = []
+
         if data["method"] == "computer.disconnect":
             self.disconnect()
-
             return {"type": ""}
-
         elif data["method"] == Methods.BUTTON_ADD:
             if "text" not in data or "name" not in data:
                 ret.append({"type": Types.ERROR, "error": Types.ERROR_NEED_ARGS})
             else:
                 self.buttons[data["name"]] = Button(data["name"], data["text"])
+        elif data["method"] == Methods.BUTTON_CLICK:
+            if "name" not in data:
+                ret.append({"type": Types.ERROR, "error": Types.ERROR_NEED_ARGS})
+            else:
+                self.press_button(data["name"])
 
         if "get_next" in data and data["get_next"]:
             self.gen_answer(ret)
@@ -94,7 +98,8 @@ class Computer:
 
     def gen_answer(self, ret):
 
-        for button_name, button in enumerate(self.buttons):
+        for button_name in self.buttons:
+            button = self.buttons[button_name]
             if button.click_count:
                 ret.append({"type": Methods.BUTTON_CLICK, "name": button_name, "count": button.click_count})
                 button.click_count = 0
@@ -115,30 +120,27 @@ class ComputerHandler:
         while True:
             sleep(5)
 
-            comp_i = 0
-            for user_i in self.computers.copy():
-                while comp_i < len(self.computers):
-                    comp = self.computers[user_i][comp_i]
+            computers = self.computers.copy()
+            for user_i in computers:
+                for comp_adr in computers[user_i]:
+                    comp = self.computers[user_i][comp_adr]
 
                     if comp.timeout > 0:
                         comp.timeout -= 5
 
-                    comp_i += 1
-
     def connection(self, user_name, adr, name):
         if user_name not in self.computers:
-            self.computers[user_name] = []
-        self.computers[user_name].append(Computer(self, user_name, adr, name))
+            self.computers[user_name] = {}
+        self.computers[user_name][adr] = Computer(user_name, self, adr, name)
 
     def get_computers(self, user_name):
-        return self.computers[user_name] if user_name in self.computers else []
+        return [self.computers[user_name][i] for i in self.computers[user_name]] if user_name in self.computers else []
 
     def get_computer(self, user_name, adr) -> Computer or None:
         if user_name in self.computers:
-            for comp in self.computers[user_name]:
+            for comp in [self.computers[user_name][i] for i in self.computers[user_name]]:
                 if comp.adr == adr:
                     return comp
-
         return None
 
 
