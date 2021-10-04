@@ -116,10 +116,12 @@ def register():
         if database.is_user(login):
             login_error = 3
 
-    elif len(password) > 50 or len(password) < 6:
+    if len(password) > 50 or len(password) < 6:
         password_error = 1
     elif len([sym for sym in login if sym not in good_syms]) > 0:
         password_error = 2
+    elif password != password_again:
+        password_error = 3
 
     if login_error or password_error:
         return render_template("register.html", login_error=login_error, password_error=password_error, user_name=None, none=None)

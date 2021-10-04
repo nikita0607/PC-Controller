@@ -36,16 +36,13 @@
 
             <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0">
                 <li><a href="/" class="nav-link px-3 text-secondary">Home</a></li>
-                <li><a href="#" class="nav-link px-3 text-white">Dashboard</a></li>
-                <li><a href="#" class="nav-link px-3 text-white">Pricing</a></li>
-                <li><a href="#" class="nav-link px-3 text-white">FAQs</a></li>
-                <li><a href="#" class="nav-link px-3 text-white">About</a></li>
+                <li><a href="/computers" class="nav-link px-3 text-white">Dashboard</a></li>
             </ul>
 
             <div class="text-end">
                 {% if user_name is not none %}
-                    <button type="button" class="btn btn-outline-light me-2">Logout</button>
-                    <img src="https://github.com/mdo.png" alt="mdo" width="32" height="32" class="rounded-circle">
+                    <button type="button" onclick="document.location='/logout'" class="btn btn-outline-light me-2">Logout</button>
+                    <img src="{{ url_for('static', filename='img/default-user.png') }}" alt="mdo" width="32" height="32" class="rounded-circle">
                 {% else %}
                     <button onclick="document.location='/login'" type="button" class="btn btn-outline-light me-2">Login</button>
                     <button onclick="document.location='/register'" type="button" class="btn btn-warning">Sign-up</button>

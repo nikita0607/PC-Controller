@@ -4,29 +4,32 @@
     <form method="post" class="form">
         <div class="form-group has-success has-feedback">
             <!--<label class="control-label" for="inputSuccessName">Имя</label> -->
+            {% if login_error == 1 %}
+                <span class="form-input-error">Длинна логина должна быть больше 4 и меньше 21</span><br/>
+            {% elif login_error == 2 %}
+                <span class="form-input-error">Логин состоит из букв а-я, А-Я, a-z, A-Z</span><br/>
+            {% elif login_error == 3 %}
+                <span class="form-input-error">Логин занят!</span><br/>
+            {% endif %}
             <input type="text" class="form-control" id="inputSuccessName" name="login" placeholder="Логин"><br/>
             <span class="glyphicon glyphicon-ok form-control-feedback"></span>
         </div>
-        {% if login_error == 1 %}
-            <span class="form-input-error">Длинна логина должна быть больше 4 и меньше 21</span><br/>
-        {% elif login_error == 2 %}
-            <span class="form-input-error">Логин состоит из букв а-я, А-Я, a-z, A-Z</span><br/>
-        {% elif login_error == 3 %}
-            <span class="form-input-error">Логин занят!</span><br/>
-        {% endif %}
+
 
         <div class="form-group has-success has-feedback">
             <label class="control-label" for="inputSuccessPass"><i>*Пароль должен содержать не менее 5 символов</i></label>
-            <input type="text" class="form-control" id="inputSuccessPass" name="password" placeholder="Пароль">
+            <input type="password" class="form-control" id="inputSuccessPass" name="password" placeholder="Пароль">
         </div>
 
         <div class="form-group has-success has-feedback">
-            <input type="text" class="form-control" id="inputSuccessPassAgain" name="password-again" placeholder="Повторите пароль"><br/>
+            <input type="password" class="form-control" id="inputSuccessPassAgain" name="password-again" placeholder="Повторите пароль"><br/>
         </div>
         {% if password_error == 1 %}
             <span class="form-input-error">Длинна пароля должна быть больше 5 и меньше 51</span><br/>
         {% elif password_error == 2 %}
             <span class="form-input-error">Пароль состоит из букв а-я, А-Я, a-z, A-Z</span><br/>
+        {% elif password_error == 3 %}
+            <span class="form-input-error">Пароли не совпадают</span><br/>
         {% endif %}
         <input type="submit" title="Готово"><br/>
     </form>
