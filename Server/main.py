@@ -145,14 +145,16 @@ def computers(user_name):
                            port="5000", ip=app_ip, len=len, none=None)
 
 
-@app.route("/<string:user_name>/computers/<string:adr>/button_click/<string:button_name>")
+@app.route("/<string:user_name>/computers/<string:addr>/button_click/<string:button_name>")
 @check_login(True)
-def button_click(user_name, adr, button_name):
-    main_logger.log("Tap button: %s" % button_name, adr, name=flask.session["login"])
-    comp = comp_handler.get_computer(user_name, adr)
+def button_click(user_name, addr, button_name):
+    main_logger.log("Tap button: %s" % button_name, " ", addr, name=flask.session["login"])
+    comp = comp_handler.get_computer(user_name, addr)
 
     if comp is not None:
         comp.press_button(button_name)
+    else:
+        main_logger.log("Computer not found!", addr, name=flask.session["login"])
 
     return redirect("/computers")
 
