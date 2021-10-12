@@ -1,42 +1,36 @@
-import sqlite3
-import os
-import time
-from hashlib import sha256
-
 from threading import Thread
 from time import sleep
 
 
-class Log:
+class Action:
+    type = ""
 
-    def __init__(self, logger_name="Unknown"):
-        if not os.path.isfile("logs.log"):
-            open("logs.log", "w").close()
+    @classmethod
+    def gen_action(cls, action_value, **kwargs):
+        action = {"type": cls.type, "value": action_value}
+        action.update()
 
-        self.logger_name = logger_name
-
-    def log(self, *args, name=None):
-        if name is None:
-            name = self.logger_name
-
-        with open("logs.log", "a") as file:
-            s = ""
-            for _s in args:
-                s += _s
-
-            file.write(f"{time.strftime('%D %T')} {name}: {s}\n")
+        return action
 
 
-class Methods:
+class ComputerMethods(Action):
+    type = "method"
 
-    BUTTON_CLICK = "button.click"
-    BUTTON_ADD = "button.add"
+    DISCONNECT = "computer.disconnect"
 
 
-class Types:
+class ButtonMethods(Action):
+    type = "method"
 
-    ERROR = "error"
-    ERROR_NEED_ARGS = "need_args"
+    CLICK = "button.click"
+    ADD = "button.add"
+
+
+class Errors(Action):
+    type = "error"
+
+    NEED_ARGS = "need_args"
+    USER_NOT_FOUND = "user_not_found"
 
 
 class Button:
@@ -77,17 +71,17 @@ class Computer:
     def parse_answer(self, data: dict):
         ret = []
 
-        if data["method"] == "computer.disconnect":
+        if data["method"] == ComputerMethods.DISCONNECT:
             self.disconnect()
             return {"type": ""}
-        elif data["method"] == Methods.BUTTON_ADD:
+        elif data["method"] == ButtonMethods.ADD:
             if "text" not in data or "name" not in data:
-                ret.append({"type": Types.ERROR, "error": Types.ERROR_NEED_ARGS})
+                ret.append(Errors.gen_action(Errors.NEED_ARGS))
             else:
                 self.buttons[data["name"]] = Button(data["name"], data["text"])
-        elif data["method"] == Methods.BUTTON_CLICK:
+        elif data["method"] == ButtonMethods.CLICK:
             if "name" not in data:
-                ret.append({"type": Types.ERROR, "error": Types.ERROR_NEED_ARGS})
+                ret.append(Errors.gen_action(Errors.NEED_ARGS))
             else:
                 self.press_button(data["name"])
 
@@ -101,7 +95,9 @@ class Computer:
         for button_name in self.buttons:
             button = self.buttons[button_name]
             if button.click_count:
-                ret.append({"type": Methods.BUTTON_CLICK, "name": button_name, "count": button.click_count})
+                ret.append(
+                    ButtonMethods.gen_action(ButtonMethods.CLICK, name=button_name, count=button.click_count)
+                )
                 button.click_count = 0
 
         return ret
@@ -133,62 +129,18 @@ class ComputerHandler:
             self.computers[user_name] = {}
         self.computers[user_name][adr] = Computer(user_name, self, adr, name)
 
+        return self.computers[user_name][adr]
+
     def get_computers(self, user_name):
         return [self.computers[user_name][i] for i in self.computers[user_name]] if user_name in self.computers else []
 
-    def get_computer(self, user_name, adr) -> Computer or None:
+    def get_computer(self, user_name, adr, create_new: bool = False, name: str = None) -> Computer | None:
         if user_name in self.computers:
             for comp in [self.computers[user_name][i] for i in self.computers[user_name]]:
                 if comp.adr == adr:
                     return comp
+
+        if create_new:
+            return self.connection(user_name, adr, name)
+
         return None
-
-
-class Database:
-
-    def __init__(self):
-        with sqlite3.connect("database.db") as db:
-            sql = db.cursor()
-
-            sql.execute("CREATE TABLE IF NOT EXISTS users (login, password)")
-
-    @staticmethod
-    def is_user(login):
-        login = sha256(login.encode()).hexdigest()
-
-        with sqlite3.connect("database.db") as db:
-            sql = db.cursor()
-
-            sql.execute("SELECT * FROM users WHERE login=?", (login,))
-
-            if sql.fetchone() is not None:
-                return True
-
-            return False
-
-    @staticmethod
-    def check_user(login, password):
-        login, password = sha256(login.encode()).hexdigest(), sha256(password.encode()).hexdigest()
-        with sqlite3.connect("database.db") as db:
-            sql = db.cursor()
-
-            sql.execute("SELECT * FROM users WHERE login=?", (login,))
-
-            user = sql.fetchone()
-            print(login)
-            if user is None or user[1] != password:
-                return False
-
-            return True
-
-    def new_user(self, login, password):
-        with sqlite3.connect("database.db") as db:
-            sql = db.cursor()
-
-            if self.is_user(login):
-                return False
-            login, password = sha256(login.encode()).hexdigest(), sha256(password.encode()).hexdigest()
-            print(login)
-            sql.execute("INSERT INTO users VALUES (?, ?)", (login, password))
-
-            return True

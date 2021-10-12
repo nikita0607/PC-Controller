@@ -70,9 +70,10 @@ class App:
                 if type["type"] == "button.click":
                     if type["name"] == "disable":
                         api.call_method("computer.disconnect")
-                        #a = os.system("shutdown /s /t 1")
+                        # a = os.system("shutdown /s /t 1")
                         # print(a)
-                        pass
+
+                        return
 
 
 if __name__ == '__main__':

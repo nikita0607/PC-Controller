@@ -4,19 +4,18 @@ import functools
 from flask import Flask, render_template, redirect, jsonify
 from socket import gethostbyname_ex, gethostname
 
-from requests.sessions import session
-from classes import *
-
+from computer import *
+from database import Database
+from logger import Logger
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = "skzhef3720t92497tyasojgke4892035ui"
 app_ip = gethostbyname_ex(gethostname())[-1][0]
 
-
 debug = True
 
 database = Database()
-main_logger = Log("Main")
+main_logger = Logger("Main")
 comp_handler = ComputerHandler(True)
 
 
@@ -44,13 +43,12 @@ def check_login(check_user_login=False):
 @app.route("/", methods=["GET"])
 @app.route("/<string:user_name>", methods=["GET"])
 def main(user_name=None):
-    
     if "login" not in flask.session:
         return render_template("main.html", logged=False, user_name=None, none=None)
     if not database.is_user(flask.session["login"]):
         del flask.session["login"]
         return render_template("main.html", logged=False, user_name=user_name, none=None)
-    
+
     return render_template("main.html", logged=True, user_name=flask.session["login"], none=None)
 
 
@@ -62,7 +60,7 @@ def login():
     login, password = flask.request.form['login'], flask.request.form['password']
 
     if database.check_user(login, password):
-        main_logger.log("Log in with login: ", login)
+        main_logger.log("Logger in with login: ", login)
         flask.session["login"] = login
         return redirect("/computers")
     else:
@@ -73,7 +71,7 @@ def login():
 def logout():
     if "login" not in flask.session:
         return redirect("/")
-    
+
     del flask.session["login"]
     return redirect("/")
 
@@ -124,7 +122,8 @@ def register():
         password_error = 3
 
     if login_error or password_error:
-        return render_template("register.html", login_error=login_error, password_error=password_error, user_name=None, none=None)
+        return render_template("register.html", login_error=login_error, password_error=password_error, user_name=None,
+                               none=None)
 
     else:
         database.new_user(login, password)
@@ -165,24 +164,23 @@ def _comp_connect():
         return "Only for computer connection!"
 
     data = flask.request.get_json()
-    print(data)
+
+    if not ("user_name" in data and
+            "name" in data):
+        return jsonify({"count": 1, "actions": [Errors.gen_action(Errors.NEED_ARGS)]})
 
     if not database.is_user(data["user_name"]):
-        return jsonify({"count": 1, "actions": [{"type": "error", "error": "user not found"}]})
+        return jsonify({"count": 1, "actions": [Errors.gen_action(Errors.USER_NOT_FOUND)]})
 
-    computer = comp_handler.get_computer(data['user_name'], data["adr"])
-    if computer is not None:
-        computer.checked()
-        parsed_answer = computer.parse_answer(data)
+    computer = comp_handler.get_computer(data['user_name'], flask.request.remote_addr, True, data["name"])
+    computer.checked()
 
-        if isinstance(parsed_answer, dict):
-            parsed_answer = [parsed_answer]
+    parsed_answer = computer.parse_answer(data)
 
-        return jsonify({"count": len(parsed_answer), "actions": parsed_answer})
+    if isinstance(parsed_answer, dict):
+        parsed_answer = [parsed_answer]
 
-    else:
-        comp_handler.connection(data['user_name'], data["adr"], data["computer_name"])
-        return jsonify({"count": 1, "actions": [{"type": "new_connection"}]})
+    return jsonify({"count": len(parsed_answer), "actions": parsed_answer})
 
 
 comp_handler.run()
