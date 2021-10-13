@@ -8,7 +8,7 @@ class Action:
     @classmethod
     def gen_action(cls, action_value, **kwargs):
         action = {"type": cls.type, "value": action_value}
-        action.update()
+        action.update(kwargs)
 
         return action
 
@@ -44,7 +44,6 @@ class Button:
 
 
 class Computer:
-
     def __init__(self, user_name, handler, adr, name):
         self.adr = adr
         self.name = name
