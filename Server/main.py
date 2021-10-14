@@ -92,14 +92,9 @@ good_syms += "".join([str(i) for i in range(10)])
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    errors = {"login_len_error": False,
-              "login_sym_error": False,
-              "login_registered": False,
-              "password_len_error": False,
-              "password_sym_error": False}
 
     if flask.request.method == "GET":
-        return render_template("register.html", errors=errors, user_name=None, none=None)
+        return render_template("register.html", user_name=None, none=None)
 
     login, password = flask.request.form['login'], flask.request.form['password']
     password_again = flask.request.form['password-again']
@@ -110,9 +105,8 @@ def register():
         login_error = 1
     elif len([sym for sym in login if sym not in good_syms]) > 0:
         login_error = 2
-    elif not [errors[error] for error in errors].count(True):
-        if database.is_user(login):
-            login_error = 3
+    elif database.is_user(login):
+        login_error = 3
 
     if len(password) > 50 or len(password) < 6:
         password_error = 1
@@ -157,7 +151,7 @@ def button_click(user_name, adr, button_name):
 
 
 @app.route("/a", methods=["POST", "GET"])
-def _comp_connect():
+def comp_connect():
     if flask.request.method == "GET":
         return "Only for computer connection!"
 
