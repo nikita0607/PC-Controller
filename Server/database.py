@@ -6,10 +6,19 @@ from hashlib import sha256
 class Database:
 
     def __init__(self):
+
+        self.user_count = 0
+
         with sqlite3.connect("database.db") as db:
             sql = db.cursor()
 
-            sql.execute("CREATE TABLE IF NOT EXISTS users (login, password)")
+            sql.execute("CREATE TABLE IF NOT EXISTS users (login, password, id)")
+
+        with sqlite3.connect("database.db") as db:
+            sql = db.cursor()
+
+            sql.execute("SELECT COUNT(*) FROM user")
+            self.user_count = sql.fetchone()
 
     @staticmethod
     def is_user(login):
@@ -48,6 +57,8 @@ class Database:
                 return False
             login, password = sha256(login.encode()).hexdigest(), sha256(password.encode()).hexdigest()
             print(login)
-            sql.execute("INSERT INTO users VALUES (?, ?)", (login, password))
+            sql.execute("INSERT INTO users VALUES (?, ?, ?)", (login, password, self.user_count))
+
+            self.user_count += 1
 
             return True
