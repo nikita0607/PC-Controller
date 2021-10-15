@@ -39,13 +39,13 @@ class Button:
         self.text = text
         self.click_count = 0
 
-    def click(self):
-        self.click_count += 1
+    def click(self): self.click_count += 1
 
 
 class Computer:
-    def __init__(self, user_name, handler, adr, name):
+    def __init__(self, user_name, handler, adr, name, _id):
         self.adr = adr
+        self.id = _id
         self.name = name
         self.user_name = user_name
         self.handler: "ComputerHandler" = handler
@@ -68,24 +68,35 @@ class Computer:
         self.timeout = 20
 
     def parse_answer(self, data: dict):
-        ret = []
-
-        if data["method"] == ComputerMethods.DISCONNECT:
-            self.disconnect()
-            return {"type": ""}
-        elif data["method"] == ButtonMethods.ADD:
-            if "text" not in data or "name" not in data:
-                ret.append(Errors.gen_action(Errors.NEED_ARGS))
-            else:
-                self.buttons[data["name"]] = Button(data["name"], data["text"])
-        elif data["method"] == ButtonMethods.CLICK:
-            if "name" not in data:
-                ret.append(Errors.gen_action(Errors.NEED_ARGS))
-            else:
-                self.press_button(data["name"])
+        ret = self.parse_action(data)
 
         if "get_next" in data and data["get_next"]:
             self.gen_answer(ret)
+
+        return ret
+
+    def parse_action(self, data: dict):
+        if "type" not in data:
+            return []
+
+        _type = data["type"]
+
+        ret = []
+
+        if _type == "method":
+            if data["method"] == ComputerMethods.DISCONNECT:
+                self.disconnect()
+                return {"type": ""}
+            elif data["method"] == ButtonMethods.ADD:
+                if "text" not in data or "name" not in data:
+                    ret.append(Errors.gen_action(Errors.NEED_ARGS))
+                else:
+                    self.buttons[data["name"]] = Button(data["name"], data["text"])
+            elif data["method"] == ButtonMethods.CLICK:
+                if "name" not in data:
+                    ret.append(Errors.gen_action(Errors.NEED_ARGS))
+                else:
+                    self.press_button(data["name"])
 
         return ret
 
@@ -123,15 +134,24 @@ class ComputerHandler:
                     if comp.timeout > 0:
                         comp.timeout -= 5
 
-    def connection(self, user_name, adr, name):
+    def connection(self, user_name, adr, name) -> Computer:
         if user_name not in self.computers:
             self.computers[user_name] = {}
-        self.computers[user_name][adr] = Computer(user_name, self, adr, name)
+
+        comp_id = len(self.computers[user_name])
+        self.computers[user_name][comp_id] = Computer(user_name, self, adr, name, comp_id)
 
         return self.computers[user_name][adr]
 
     def get_computers(self, user_name):
         return [self.computers[user_name][i] for i in self.computers[user_name]] if user_name in self.computers else []
+
+    def get_computer_id(self, user_name, id) -> Computer | None:
+
+        if user_name in self.computers and id in self.computers[user_name]:
+            return self.computers[user_name][id]
+
+        return None
 
     def get_computer(self, user_name, adr, create_new: bool = False, name: str = None) -> Computer | None:
         if user_name in self.computers:
