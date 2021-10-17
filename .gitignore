@@ -4,4 +4,4 @@ venv
 Client/config.json
 Server/database.db
 Server/logs.log
-
+Server/config.json
