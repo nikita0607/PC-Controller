@@ -145,7 +145,7 @@ def _computers():
 @app.route("/<string:user_name>/computers")
 @check_login(True)
 def computers(user_name):
-    return render_template("computers.html", computers=comp_handler.get_computers(user_name), user_name=user_name,
+    return render_template("computers.html", computers=comp_handler.get_user_computers(user_name), user_name=user_name,
                            port="5000", ip=app_ip, len=len, none=None)
 
 
