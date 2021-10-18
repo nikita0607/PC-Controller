@@ -3,31 +3,31 @@ from time import sleep
 
 
 class Action:
-    type = ""
+    action = ""
 
     @classmethod
     def gen_action(cls, action_value, **kwargs):
-        action = {"type": cls.type, "value": action_value}
+        action = {"action": cls.action, "type": action_value}
         action.update(kwargs)
 
         return action
 
 
 class ComputerMethods(Action):
-    type = "method"
+    action = "method"
 
     DISCONNECT = "computer.disconnect"
 
 
 class ButtonMethods(Action):
-    type = "method"
+    action = "method"
 
     CLICK = "button.click"
     ADD = "button.add"
 
 
 class Errors(Action):
-    type = "error"
+    action = "error"
 
     NEED_ARGS = "need_args"
     USER_NOT_FOUND = "user_not_found"
@@ -76,17 +76,17 @@ class Computer:
         return ret
 
     def parse_action(self, data: dict):
-        if "type" not in data:
+        if "action" not in data:
             return []
 
-        _type = data["type"]
+        action = data["action"]
 
         ret = []
 
-        if _type == "method":
+        if action == "method":
             if data["method"] == ComputerMethods.DISCONNECT:
                 self.disconnect()
-                return {"type": ""}
+                return {"action": ""}
             elif data["method"] == ButtonMethods.ADD:
                 if "text" not in data or "name" not in data:
                     ret.append(Errors.gen_action(Errors.NEED_ARGS))
@@ -119,12 +119,20 @@ class ComputerHandler:
         self.debug = debug
         self.computers = {}
 
+        self.cached_id = {}
+
     def run(self):
         Thread(target=self.checker, daemon=True).start()
 
     def checker(self):
+        iters = 0
+
         while True:
             sleep(5)
+            iters += 1
+
+            if not iters % 100:
+                self.clear_cached_id_all()
 
             computers = self.computers.copy()
             for user_i in computers:
@@ -141,22 +149,52 @@ class ComputerHandler:
         comp_id = len(self.computers[user_name])
         self.computers[user_name][comp_id] = Computer(user_name, self, adr, name, comp_id)
 
+        self.add_cached_id(user_name, adr, comp_id)
+
         return self.computers[user_name][adr]
 
-    def get_computers(self, user_name):
+    def get_user_computers(self, user_name):
         return [self.computers[user_name][i] for i in self.computers[user_name]] if user_name in self.computers else []
 
-    def get_computer_id(self, user_name, id) -> Computer | None:
+    def add_cached_id(self, user_name: str, adr: str, id: str):
+        """
+        :param user_name: User name
+        :param adr: Computer address
+        :param id: Computer id in this web app
+        :return: None
 
-        if user_name in self.computers and id in self.computers[user_name]:
-            return self.computers[user_name][id]
+        Add computer id to cache
+        """
 
-        return None
+        if user_name not in self.cached_id:
+            self.cached_id[user_name] = {}
+        self.cached_id[user_name][adr] = id
+
+    def clear_cached_id(self, user_name):
+        if user_name in self.cached_id:
+            del self.cached_id[user_name]
+
+    def clear_cached_id_all(self):
+        for user_name in self.computers.copy():
+            self.clear_cached_id(user_name)
 
     def get_computer(self, user_name, adr, create_new: bool = False, name: str = None) -> Computer | None:
+        """
+        :param user_name: User name
+        :param adr: Computer address
+        :param create_new: If computer not exists, he will be created
+        :param name: Name of new computer (if create_new == True)
+        :return: Computer or None
+        """
+
         if user_name in self.computers:
+            if user_name in self.cached_id:
+                if adr in self.cached_id[user_name]:
+                    return self.cached_id[user_name][adr]
+
             for comp in [self.computers[user_name][i] for i in self.computers[user_name]]:
                 if comp.adr == adr:
+                    self.add_cached_id(user_name, adr, comp.id)
                     return comp
 
         if create_new:
