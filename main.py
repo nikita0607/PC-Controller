@@ -73,7 +73,7 @@ def login():
     login, password = flask.request.form['login'], flask.request.form['password']
 
     if database.check_user(login, password):
-        main_logger.log("Logger in with login: ", login)
+        main_logger.log("Logged in with login: ", login)
         flask.session["login"] = login
         return redirect("/computers")
     else:
@@ -172,14 +172,23 @@ def comp_connect():
 
     data = flask.request.get_json()
 
-    if not ("user_name" in data and
-            "name" in data):
+    if "user_name" in data:
+        user_name = data["user_name"]
+    elif "user_name" in flask.session:
+        user_name = flask.session["user_name"]
+    else:
         return jsonify({"count": 1, "actions": [Errors.gen_action(Errors.NEED_ARGS)]})
 
-    if not database.is_user(data["user_name"]):
+    name = flask.request.remote_addr
+    if "name" in data:
+        name = data["user_name"]
+    elif "name" in flask.session:
+        name = flask.session["user_name"]
+
+    if not database.is_user(user_name):
         return jsonify({"count": 1, "actions": [Errors.gen_action(Errors.USER_NOT_FOUND)]})
 
-    computer = comp_handler.get_computer(data['user_name'], flask.request.remote_addr, True, data["name"])
+    computer = comp_handler.get_computer(user_name, flask.request.remote_addr, True, name)
     computer.checked()
 
     parsed_answer = computer.parse_answer(data)
