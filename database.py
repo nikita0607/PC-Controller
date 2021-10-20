@@ -12,13 +12,14 @@ class Database:
         with sqlite3.connect("database.db") as db:
             sql = db.cursor()
 
-            sql.execute("CREATE TABLE IF NOT EXISTS users (login, password, id)")
+            sql.execute("CREATE TABLE IF NOT EXISTS users (login, password, id INT)")
 
         with sqlite3.connect("database.db") as db:
             sql = db.cursor()
 
-            sql.execute("SELECT COUNT(*) FROM user")
-            self.user_count = sql.fetchone()
+            sql.execute("SELECT COUNT(*) FROM users")
+            self.user_count = sql.fetchone()[0]
+            print(self.user_count)
 
     @staticmethod
     def is_user(login):

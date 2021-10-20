@@ -2,35 +2,59 @@ from threading import Thread
 from time import sleep
 
 
+class ActionType():
+
+    def __init__(self, str_type, *need_args):
+        self.str_type = str_type
+        self.need_args = need_args
+
+    def has_all_args(self, action_type, _dict) -> (bool, list):
+        ret = []
+
+        for arg in action_type.need_args:
+            if arg not in _dict:
+                ret.append(arg)
+
+        return ret
+
+
 class Action:
     action = ""
 
     @classmethod
-    def gen_action(cls, action_value, **kwargs):
-        action = {"action": cls.action, "type": action_value}
+    def gen_action(cls, action_type: ActionType | str, _action: str | None = None, **kwargs):
+        str_type = action_type.str_type if isinstance(action_type, ActionType) else action_type
+
+        action = {"action": cls.action if _action is None else _action, "type": str_type}
         action.update(kwargs)
 
         return action
+
+    def gen_error_need_args(self, action_type: ActionType, _dict) -> dict | None:
+        args = ActionType.has_all_args(action_type, _dict)
+
+        if len(args):
+            return self.gen_action("need_args", "error", args=args)
 
 
 class ComputerMethods(Action):
     action = "method"
 
-    DISCONNECT = "computer.disconnect"
+    DISCONNECT = ActionType("computer.disconnect")
 
 
 class ButtonMethods(Action):
-    action = "method"
+    action = ActionType("method")
 
-    CLICK = "button.click"
-    ADD = "button.add"
+    CLICK = ActionType("button.click")
+    ADD = ActionType("button.add", "name", "text")
 
 
 class Errors(Action):
     action = "error"
 
-    NEED_ARGS = "need_args"
-    USER_NOT_FOUND = "user_not_found"
+    NEED_ARGS = ActionType("need_args")
+    USER_NOT_FOUND = ActionType("user_not_found")
 
 
 class Button:
@@ -156,11 +180,11 @@ class ComputerHandler:
     def get_user_computers(self, user_name):
         return [self.computers[user_name][i] for i in self.computers[user_name]] if user_name in self.computers else []
 
-    def add_cached_id(self, user_name: str, adr: str, id: str):
+    def add_cached_id(self, user_name: str, adr: str, _id: int):
         """
         :param user_name: User name
         :param adr: Computer address
-        :param id: Computer id in this web app
+        :param _id: Computer id in this web app
         :return: None
 
         Add computer id to cache
@@ -168,7 +192,7 @@ class ComputerHandler:
 
         if user_name not in self.cached_id:
             self.cached_id[user_name] = {}
-        self.cached_id[user_name][adr] = id
+        self.cached_id[user_name][adr] = _id
 
     def clear_cached_id(self, user_name):
         if user_name in self.cached_id:

@@ -16,13 +16,14 @@ try:
 except:
     with open('config.json', 'w') as file:
         file.write('{"ip": ""}')
+    print(f"You can try address: {gethostbyname_ex(gethostname())[-1][0]}")
     raise
 
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = "skzhef3720t92497tyasojgke4892035ui"
 
-app_ip = config["ip"]  # gethostbyname_ex(gethostname())[-1][0]
+app_ip = config["ip"]  #
 
 debug = True
 
