@@ -8,7 +8,8 @@ class ActionType():
         self.str_type = str_type
         self.need_args = need_args
 
-    def has_all_args(self, action_type, _dict) -> (bool, list):
+    @staticmethod
+    def has_all_args(action_type, _dict) -> (bool, list):
         ret = []
 
         for arg in action_type.need_args:
@@ -17,12 +18,15 @@ class ActionType():
 
         return ret
 
+    def __eq__(self, other):
+        return self.str_type == other
+
 
 class Action:
     action = ""
 
     @classmethod
-    def gen_action(cls, action_type: ActionType | str, _action: str | None = None, **kwargs):
+    def gen_action(cls, action_type: ActionType | str, _action: str | None = None, **kwargs) -> dict:
         str_type = action_type.str_type if isinstance(action_type, ActionType) else action_type
 
         action = {"action": cls.action if _action is None else _action, "type": str_type}
@@ -30,11 +34,12 @@ class Action:
 
         return action
 
-    def gen_error_need_args(self, action_type: ActionType, _dict) -> dict | None:
+    @classmethod
+    def gen_error_need_args(cls, action_type: ActionType, _dict) -> dict or None:
         args = ActionType.has_all_args(action_type, _dict)
 
         if len(args):
-            return self.gen_action("need_args", "error", args=args)
+            return cls.gen_action("need_args", "error", args=args)
 
 
 class ComputerMethods(Action):
@@ -44,10 +49,12 @@ class ComputerMethods(Action):
 
 
 class ButtonMethods(Action):
-    action = ActionType("method")
+    action = "method"
 
     CLICK = ActionType("button.click")
     ADD = ActionType("button.add", "name", "text")
+    DELETE = ActionType("button.delete", "name")
+    DELETE_ALL = ActionType("button.delete_all")
 
 
 class Errors(Action):
@@ -86,6 +93,7 @@ class Computer:
         self.buttons[button_name].click()
 
     def disconnect(self):
+        self.handler.clear_cached_id_for(self.user_name, self.id)
         del self.handler.computers[self.user_name][self.adr]
 
     def checked(self):
@@ -94,8 +102,8 @@ class Computer:
     def parse_answer(self, data: dict):
         ret = self.parse_action(data)
 
-        if "get_next" in data and data["get_next"]:
-            self.gen_answer(ret)
+        if "get_actions" in data and data["get_actions"]:
+            self.get_actions(ret)
 
         return ret
 
@@ -108,15 +116,35 @@ class Computer:
         ret = []
 
         if action == "method":
-            if data["method"] == ComputerMethods.DISCONNECT:
+            method = data["type"]
+            if method == ComputerMethods.DISCONNECT:
                 self.disconnect()
                 return {"action": ""}
-            elif data["method"] == ButtonMethods.ADD:
-                if "text" not in data or "name" not in data:
-                    ret.append(Errors.gen_action(Errors.NEED_ARGS))
+
+            elif ButtonMethods.ADD == method:
+                error = Action.gen_error_need_args(ButtonMethods.ADD, data)
+                if error is not None:
+                    ret.append(error)
                 else:
                     self.buttons[data["name"]] = Button(data["name"], data["text"])
-            elif data["method"] == ButtonMethods.CLICK:
+
+            elif ButtonMethods.DELETE == method:
+                error = Action.gen_error_need_args(ButtonMethods.DELETE, data)
+                if error is not None:
+                    ret.append(error)
+                else:
+                    if data["name"] in self.buttons:
+                        del self.buttons[data["name"]]
+
+            elif ButtonMethods.DELETE_ALL == method:
+                error = Action.gen_error_need_args(ButtonMethods.DELETE_ALL, data)
+                if error is not None:
+                    ret.append(error)
+                else:
+                    for button_name in [_ for _ in self.buttons]:
+                        del self.buttons[button_name]
+
+            elif method == ButtonMethods.CLICK:
                 if "name" not in data:
                     ret.append(Errors.gen_action(Errors.NEED_ARGS))
                 else:
@@ -124,7 +152,7 @@ class Computer:
 
         return ret
 
-    def gen_answer(self, ret):
+    def get_actions(self, ret):
 
         for button_name in self.buttons:
             button = self.buttons[button_name]
@@ -133,8 +161,6 @@ class Computer:
                     ButtonMethods.gen_action(ButtonMethods.CLICK, name=button_name, count=button.click_count)
                 )
                 button.click_count = 0
-
-        return ret
 
 
 class ComputerHandler:
@@ -170,12 +196,19 @@ class ComputerHandler:
         if user_name not in self.computers:
             self.computers[user_name] = {}
 
-        comp_id = len(self.computers[user_name])
+        comp_id = None
+        for i in range(len(self.computers[user_name])):
+            if i not in self.computers[user_name]:
+                comp_id = i
+                break
+        if comp_id is None:
+            comp_id = len(self.computers[user_name])
+
         self.computers[user_name][comp_id] = Computer(user_name, self, adr, name, comp_id)
 
         self.add_cached_id(user_name, adr, comp_id)
 
-        return self.computers[user_name][adr]
+        return self.computers[user_name][comp_id]
 
     def get_user_computers(self, user_name):
         return [self.computers[user_name][i] for i in self.computers[user_name]] if user_name in self.computers else []
@@ -198,11 +231,18 @@ class ComputerHandler:
         if user_name in self.cached_id:
             del self.cached_id[user_name]
 
+    def clear_cached_id_for(self, user_name, _id):
+        if user_name not in self.cached_id:
+            return
+
+        if _id in self.cached_id[user_name]:
+            del self.cached_id[user_name][_id]
+
     def clear_cached_id_all(self):
         for user_name in self.computers.copy():
             self.clear_cached_id(user_name)
 
-    def get_computer(self, user_name, adr, create_new: bool = False, name: str = None) -> Computer | None:
+    def get_computer(self, user_name, adr=None, _id=None, create_new: bool = False, name: str = None) -> Computer | None:
         """
         :param user_name: User name
         :param adr: Computer address
@@ -212,9 +252,18 @@ class ComputerHandler:
         """
 
         if user_name in self.computers:
+            if _id is not None:
+                print(self.computers[user_name])
+                if _id in self.computers[user_name]:
+                    return self.computers[user_name][_id]
+                return None
+
             if user_name in self.cached_id:
                 if adr in self.cached_id[user_name]:
-                    return self.cached_id[user_name][adr]
+                    _id = self.cached_id[user_name][adr]
+                    if _id in self.computers[user_name]:
+                        return self.computers[user_name][_id]
+                    return None
 
             for comp in [self.computers[user_name][i] for i in self.computers[user_name]]:
                 if comp.adr == adr:

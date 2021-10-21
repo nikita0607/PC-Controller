@@ -67,6 +67,6 @@ class Logger:
 
         s = ""
         for _s in args:
-            s += _s
+            s += str(_s)
 
         self.global_logger.add_log_info(f"{time.strftime('%D %T')} {name}: {s}\n")

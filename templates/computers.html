@@ -17,7 +17,7 @@
                     <p>Адресс: <span class="comp-arg">{{ comp.adr }}</span></p>
 
                     {% for but_name in comp.buttons %}
-                        <a href="/{{ user_name }}/computers/{{ comp.adr }}/button_click/{{ but_name }}">
+                        <a href="/{{ user_name }}/computers/{{ comp.id }}/button_click/{{ but_name }}">
                             <button type="button">{{ comp.buttons[but_name].text }}</button>
                         </a>
                     {% endfor %}
