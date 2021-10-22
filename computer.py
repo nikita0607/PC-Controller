@@ -1,5 +1,7 @@
 from threading import Thread
 from time import sleep
+from typing import Union
+
 
 
 class ActionType():
@@ -26,7 +28,7 @@ class Action:
     action = ""
 
     @classmethod
-    def gen_action(cls, action_type: ActionType | str, _action: str | None = None, **kwargs) -> dict:
+    def gen_action(cls, action_type: Union[ActionType, str], _action: Union[str, None] = None, **kwargs) -> dict:
         str_type = action_type.str_type if isinstance(action_type, ActionType) else action_type
 
         action = {"action": cls.action if _action is None else _action, "type": str_type}
@@ -242,7 +244,7 @@ class ComputerHandler:
         for user_name in self.computers.copy():
             self.clear_cached_id(user_name)
 
-    def get_computer(self, user_name, adr=None, _id=None, create_new: bool = False, name: str = None) -> Computer | None:
+    def get_computer(self, user_name, adr=None, _id=None, create_new: bool = False, name: str = None) -> Union[Computer, None]:
         """
         :param user_name: User name
         :param adr: Computer address
