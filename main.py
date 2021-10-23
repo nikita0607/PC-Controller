@@ -167,21 +167,18 @@ def create_hash_key():
 
 
 @app.route("/computers")
-@check_login()
-def _computers():
-    return computers(flask.session['login'])
-
-
-@app.route("/<string:user_name>/computers")
 @check_login(True)
-def computers(user_name):
+def computers():
+    user_name = flask.session["login"]
     return render_template("computers.html", computers=comp_handler.get_user_computers(user_name), user_name=user_name,
                            port="5000", ip=app_ip, len=len, none=None)
 
 
-@app.route("/<string:user_name>/computers/<int:_id>/button_click/<string:button_name>")
-@check_login(True)
-def button_click(user_name, _id, button_name):
+@app.route("/computers/<int:_id>/button_click/<string:button_name>")
+@check_login()
+def button_click(_id, button_name):
+    user_name = flask.session["login"]
+
     main_logger.log("Tap button: %s" % button_name, " ", _id, name=flask.session["login"])
     
     comp = comp_handler.get_computer(user_name, _id=_id)
