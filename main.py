@@ -137,6 +137,35 @@ def register():
         return redirect("/")
 
 
+@app.route("/docs")
+def docs():
+    return render_template("docs.html")
+
+
+@app.route("/hash_key")
+@check_login()
+def user_hash_key():
+    return render_template("hash.html")
+
+
+@app.route("/get_hash_key")
+@check_login()
+def get_hash_key():
+    hash_key = database.get_hash_key(flask.session["login"])
+
+    if hash_key is not None:
+        return f"Your hash key: {hash_key}"
+    return "You don't have hash key!"
+
+
+@app.route("/create_hash_key")
+@check_login()
+def create_hash_key():
+    database.create_hash_key(flask.session["login"])
+
+    return redirect("/get_hash_key")
+
+
 @app.route("/computers")
 @check_login()
 def _computers():

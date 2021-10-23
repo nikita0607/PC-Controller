@@ -1,24 +1,46 @@
+from database import Database
+
 from threading import Thread
 from time import sleep
 from typing import Union
 
 
+database = Database()
+
 
 class ActionType():
 
-    def __init__(self, str_type, *need_args):
+    def __init__(self, str_type, *need_args, secured: bool = False):
         self.str_type = str_type
         self.need_args = need_args
+        self.secured = secured
 
-    @staticmethod
-    def has_all_args(action_type, _dict) -> (bool, list):
+    def has_all_args(self, _dict) -> (bool, list):
         ret = []
 
-        for arg in action_type.need_args:
+        for arg in self.need_args:
             if arg not in _dict:
                 ret.append(arg)
 
         return ret
+
+    def check_args(self, _dict):
+        args = self.has_all_args(_dict)
+
+        if len(args):
+            return Action.gen_action("need_args", "error", args=args)
+
+        if self.secured:
+            if "hash_key" not in _dict:
+                return Action.gen_action("need_hash_key", "error")
+
+            user_hash_key = database.get_hash_key(_dict["user_name"])
+
+            if user_hash_key is None:
+                return Action.gen_action("hash_key_not_created", "error")
+
+            if user_hash_key != _dict["hash_key"]:
+                return Action.gen_action("wrong_hash_key", "error")
 
     def __eq__(self, other):
         return self.str_type == other
@@ -37,8 +59,8 @@ class Action:
         return action
 
     @classmethod
-    def gen_error_need_args(cls, action_type: ActionType, _dict) -> dict or None:
-        args = ActionType.has_all_args(action_type, _dict)
+    def gen_error_args(cls, action_type: ActionType, _dict) -> dict or None:
+        args = action_type.has_all_args(_dict)
 
         if len(args):
             return cls.gen_action("need_args", "error", args=args)
@@ -63,6 +85,11 @@ class Errors(Action):
     action = "error"
 
     NEED_ARGS = ActionType("need_args")
+
+    NEED_HASH_KEY = ActionType("need_hash_key")
+    WRONG_HASH_KEY = ActionType("wrong_hash_key")
+    HASH_KEY_NOT_CREATED = ActionType("hash_key_not_created")
+
     USER_NOT_FOUND = ActionType("user_not_found")
 
 
@@ -124,14 +151,14 @@ class Computer:
                 return {"action": ""}
 
             elif ButtonMethods.ADD == method:
-                error = Action.gen_error_need_args(ButtonMethods.ADD, data)
+                error = action.gen_error_args(data)
                 if error is not None:
                     ret.append(error)
                 else:
                     self.buttons[data["name"]] = Button(data["name"], data["text"])
 
             elif ButtonMethods.DELETE == method:
-                error = Action.gen_error_need_args(ButtonMethods.DELETE, data)
+                error = action.gen_error_args(data)
                 if error is not None:
                     ret.append(error)
                 else:
@@ -139,7 +166,7 @@ class Computer:
                         del self.buttons[data["name"]]
 
             elif ButtonMethods.DELETE_ALL == method:
-                error = Action.gen_error_need_args(ButtonMethods.DELETE_ALL, data)
+                error = action.gen_error_args(data)
                 if error is not None:
                     ret.append(error)
                 else:
