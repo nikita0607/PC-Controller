@@ -22,7 +22,6 @@ class Database:
 
             sql.execute("SELECT COUNT(*) FROM users")
             self.user_count = sql.fetchone()[0]
-            print(self.user_count)
 
     @staticmethod
     def is_user(login):
