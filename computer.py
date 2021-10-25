@@ -24,7 +24,7 @@ class ActionType():
 
         return ret
 
-    def check_args(self, _dict):
+    def gen_error_args(self, _dict):
         args = self.has_all_args(_dict)
 
         if len(args):
@@ -123,7 +123,7 @@ class Computer:
 
     def disconnect(self):
         self.handler.clear_cached_id_for(self.user_name, self.id)
-        del self.handler.computers[self.user_name][self.adr]
+        del self.handler.computers[self.user_name][self.id]
 
     def checked(self):
         self.timeout = 20
@@ -151,14 +151,14 @@ class Computer:
                 return {"action": ""}
 
             elif ButtonMethods.ADD == method:
-                error = action.gen_error_args(data)
+                error = ButtonMethods.ADD.gen_error_args(data)
                 if error is not None:
                     ret.append(error)
                 else:
                     self.buttons[data["name"]] = Button(data["name"], data["text"])
 
             elif ButtonMethods.DELETE == method:
-                error = action.gen_error_args(data)
+                error = ButtonMethods.DELETE.gen_error_args(data)
                 if error is not None:
                     ret.append(error)
                 else:
@@ -166,7 +166,7 @@ class Computer:
                         del self.buttons[data["name"]]
 
             elif ButtonMethods.DELETE_ALL == method:
-                error = action.gen_error_args(data)
+                error = ButtonMethods.DELETE_ALL.gen_error_args(data)
                 if error is not None:
                     ret.append(error)
                 else:
