@@ -24,7 +24,7 @@ class ActionType():
 
         return ret
 
-    def check_args(self, _dict):
+    def gen_error_args(self, _dict):
         args = self.has_all_args(_dict)
 
         if len(args):
@@ -76,7 +76,7 @@ class Action:
             action_type = attrs[i]
 
             if action_type == data["type"]:
-                ret = action_type.check_args(data)
+                ret = action_type.gen_error_args(data)
                 return ret if ret is not None else action_type
 
 
@@ -184,8 +184,7 @@ class Computer(PComputer):
         self.buttons[button_name].click()
 
     def disconnect(self):
-        self.handler.clear_cached_id_for(self.user_name, self.id)
-        del self.handler.computers[self.user_name][self.adr]
+       self.handler.disconnect(self.user_name, self.id)
 
     def checked(self):
         self.timeout = 20
@@ -238,14 +237,13 @@ class Computer(PComputer):
             elif Methods.BUTTON_DELETE_ALL == val:
                 for button_name in [_ for _ in self.buttons]:
                     del self.buttons[button_name]
-
             elif val == Methods.BUTTON_CLICK:
                 if not broadcast:
                     self.press_button(data["name"])
                 else:
                     self.handler.get_broadcast_computer(self.user_name).press_button(data["name"])
 
-        return ret
+            return ret
 
     def get_actions(self) -> list:
         ret = []
@@ -288,7 +286,7 @@ class ComputerHandler:
                     if comp.timeout > 0:
                         comp.timeout -= 5
 
-    def connection(self, user_name, adr, name) -> Computer:
+    def connect(self, user_name, adr, name) -> Computer:
         if user_name not in self.computers:
             self.computers[user_name] = {}
             self.computers[user_name][0] = BroadcastComputer(user_name, self)
@@ -306,6 +304,10 @@ class ComputerHandler:
         self.add_cached_id(user_name, adr, comp_id)
 
         return self.computers[user_name][comp_id]
+
+    def disconnect(self, user_name, _id):
+        self.clear_cached_id_for(user_name, _id)
+        del self.computers[user_name][_id]
 
     def get_user_computers(self, user_name) -> List[Computer]:
         return [self.computers[user_name][i] for i in self.computers[user_name] if i != 0] \
@@ -373,6 +375,6 @@ class ComputerHandler:
                     return comp
 
         if create_new:
-            return self.connection(user_name, adr, name)
+            return self.connect(user_name, adr, name)
 
         return None
