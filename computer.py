@@ -1,16 +1,16 @@
-from database import Database
-
 from threading import Thread
 from time import sleep
 from typing import Union, List, Dict
 
+from database import Database
 
 database = Database()
 
 
-class ActionType():
+class ActionType:
 
-    def __init__(self, str_type, *need_args, secured: bool = False):
+    def __init__(self, action: str, str_type: str, *need_args, secured: bool = False):
+        self.action = action
         self.str_type = str_type
         self.need_args = need_args
         self.secured = secured
@@ -42,8 +42,24 @@ class ActionType():
             if user_hash_key != _dict["hash_key"]:
                 return Action.gen_action("wrong_hash_key", "error")
 
+    def gen_action(self, **kwargs) -> dict:
+        action = {"action": self.action, "type": self.str_type}
+        action.update(kwargs)
+
+        return action
+
     def __eq__(self, other):
         return self.str_type == other
+
+
+class ActionTypeMethod(ActionType):
+    def __init__(self, str_type: str, *need_args, secured: bool = False):
+        super().__init__("method", str_type=str_type, *need_args, secured=secured)
+
+
+class ActionTypeError(ActionType):
+    def __init__(self, str_type: str, *need_args, secured: bool = False):
+        super().__init__("error", str_type, *need_args, secured=secured)
 
 
 class Action:
@@ -57,13 +73,6 @@ class Action:
         action.update(kwargs)
 
         return action
-
-    @classmethod
-    def gen_error_args(cls, action_type: ActionType, _dict) -> dict or None:
-        args = action_type.has_all_args(_dict)
-
-        if len(args):
-            return cls.gen_action("need_args", "error", args=args)
 
     @classmethod
     def parse(cls, data: dict):
@@ -83,25 +92,25 @@ class Action:
 class Methods(Action):
     action = "method"
 
-    COMPUTER_DISCONNECT = ActionType("computer.disconnect")
+    COMPUTER_DISCONNECT = ActionTypeMethod("computer.disconnect")
 
-    BUTTON_CLICK = ActionType("button.click")
-    BUTTON_ADD = ActionType("button.add", "name", "text")
-    BUTTON_DELETE = ActionType("button.delete", "name")
-    BUTTON_DELETE_ALL = ActionType("button.delete_all")
-    BUTTON_RESET_CUR_COUNTER = ActionType("button.reset_cur_counter")
+    BUTTON_CLICK = ActionTypeMethod("button.click")
+    BUTTON_ADD = ActionTypeMethod("button.add", "name", "text")
+    BUTTON_DELETE = ActionTypeMethod("button.delete", "name")
+    BUTTON_DELETE_ALL = ActionTypeMethod("button.delete_all")
+    BUTTON_RESET_CUR_COUNTER = ActionTypeMethod("button.reset_cur_counter")
 
 
 class Errors(Action):
     action = "error"
 
-    NEED_ARGS = ActionType("need_args")
+    NEED_ARGS = ActionTypeError("need_args")
 
-    NEED_HASH_KEY = ActionType("need_hash_key")
-    WRONG_HASH_KEY = ActionType("wrong_hash_key")
-    HASH_KEY_NOT_CREATED = ActionType("hash_key_not_created")
+    NEED_HASH_KEY = ActionTypeError("need_hash_key")
+    WRONG_HASH_KEY = ActionTypeError("wrong_hash_key")
+    HASH_KEY_NOT_CREATED = ActionTypeError("hash_key_not_created")
 
-    USER_NOT_FOUND = ActionType("user_not_found")
+    USER_NOT_FOUND = ActionTypeError("user_not_found")
 
 
 class Button:
@@ -123,14 +132,14 @@ class Button:
         if reset:
             self.reset_cur_counter()
 
-        return Methods.gen_action(Methods.BUTTON_CLICK, name=self.name, count=self.click_count)
+        return Methods.BUTTON_CLICK.gen_action(name=self.name, count=self.click_count)
 
 
-class PComputer:
-    def add_button(self, button_name, button_text):
+class IComputer:
+    def add_button(self, button_name: str, button_text: str):
         pass
 
-    def press_button(self, button_name):
+    def press_button(self, button_name: str):
         pass
 
     def disconnect(self):
@@ -140,17 +149,17 @@ class PComputer:
         pass
 
 
-class BroadcastComputer(PComputer):
+class BroadcastComputer(IComputer):
     def __init__(self, user_name, handler):
         self.user_name = user_name
         self.handler: ComputerHandler = handler
 
-    def add_button(self, button_name, button_text):
+    def add_button(self, button_name: str, button_text: str):
         computers = self.handler.get_user_computers(self.user_name)
         for computer in computers:
             computer.add_button(button_name, button_text)
 
-    def press_button(self, button_name):
+    def press_button(self, button_name: str):
         computers = self.handler.get_user_computers(self.user_name)
         for computer in computers:
             computer.press_button(button_name)
@@ -161,8 +170,8 @@ class BroadcastComputer(PComputer):
             computer.disconnect()
 
 
-class Computer(PComputer):
-    def __init__(self, user_name, handler, adr, name, _id):
+class Computer(IComputer):
+    def __init__(self, user_name: str, handler, adr: str, name: str, _id: int):
         self.adr = adr
         self.id = _id
         self.name = name
@@ -177,14 +186,14 @@ class Computer(PComputer):
         self.buttons = {}
         self.actions = []
 
-    def add_button(self, button_name, button_text):
+    def add_button(self, button_name: str, button_text: str):
         self.buttons[button_name] = Button(button_name, button_text)
 
     def press_button(self, button_name):
         self.buttons[button_name].click()
 
     def disconnect(self):
-       self.handler.disconnect(self.user_name, self.id)
+        self.handler.disconnect(self.user_name, self.id)
 
     def checked(self):
         self.timeout = 20
@@ -193,11 +202,11 @@ class Computer(PComputer):
         ret = self.parse_action(data)
 
         if "get_actions" in data and data["get_actions"]:
-            ret.update(self.get_actions())
+            ret.extend(self.get_actions())
 
         return ret
 
-    def parse_action(self, data: dict):
+    def parse_action(self, data: dict) -> list:
         if "action" not in data:
             return []
 
@@ -215,12 +224,12 @@ class Computer(PComputer):
             val = Methods.parse(data)
 
             if isinstance(val, dict):
-                return val
+                return [val]
 
             if val == Methods.COMPUTER_DISCONNECT:
                 if not broadcast:
                     self.disconnect()
-                return {"action": ""}
+                return [{"action": ""}]
 
             elif Methods.BUTTON_ADD == val:
                 if not broadcast:
@@ -281,12 +290,15 @@ class ComputerHandler:
             computers = self.computers.copy()
             for user_i in computers:
                 for comp_adr in computers[user_i]:
+                    if comp_adr == 0:
+                        continue
+
                     comp = self.computers[user_i][comp_adr]
 
                     if comp.timeout > 0:
                         comp.timeout -= 5
 
-    def connect(self, user_name, adr, name) -> Computer:
+    def connect(self, user_name: str, adr: str, name: str) -> Computer:
         if user_name not in self.computers:
             self.computers[user_name] = {}
             self.computers[user_name][0] = BroadcastComputer(user_name, self)
@@ -305,15 +317,15 @@ class ComputerHandler:
 
         return self.computers[user_name][comp_id]
 
-    def disconnect(self, user_name, _id):
+    def disconnect(self, user_name: str, _id: int):
         self.clear_cached_id_for(user_name, _id)
         del self.computers[user_name][_id]
 
-    def get_user_computers(self, user_name) -> List[Computer]:
+    def get_user_computers(self, user_name: str) -> List[Computer]:
         return [self.computers[user_name][i] for i in self.computers[user_name] if i != 0] \
             if user_name in self.computers else []
 
-    def get_broadcast_computer(self, user_name) -> Union[BroadcastComputer, None]:
+    def get_broadcast_computer(self, user_name: str) -> Union[BroadcastComputer, None]:
         if user_name in self.computers:
             return self.computers[user_name][0]
 
@@ -331,11 +343,18 @@ class ComputerHandler:
             self.cached_id[user_name] = {}
         self.cached_id[user_name][adr] = _id
 
-    def clear_cached_id(self, user_name):
+    def clear_cached_id(self, user_name: str):
+        """
+        Clear all cached ids for one user
+        """
         if user_name in self.cached_id:
             del self.cached_id[user_name]
 
-    def clear_cached_id_for(self, user_name, _id):
+    def clear_cached_id_for(self, user_name: str, _id: int):
+        """
+        Clear cached id of one computer
+        """
+
         if user_name not in self.cached_id:
             return
 
@@ -343,13 +362,21 @@ class ComputerHandler:
             del self.cached_id[user_name][_id]
 
     def clear_cached_id_all(self):
+        """
+        Clear cached ids for all users
+        """
+
         for user_name in self.computers.copy():
             self.clear_cached_id(user_name)
 
-    def get_computer(self, user_name, adr=None, _id=None, create_new: bool = False, name: str = None) -> Union[Computer, None]:
+    def get_computer(self, user_name: str, adr: str = None, _id: int = None,
+                     create_new: bool = False, name: str = None) -> Union[Computer, None]:
         """
+        Get computer Object
+
         :param user_name: User name
         :param adr: Computer address
+        :param _id: Id of searched computer
         :param create_new: If computer not exists, he will be created
         :param name: Name of new computer (if create_new == True)
         :return: Computer or None
