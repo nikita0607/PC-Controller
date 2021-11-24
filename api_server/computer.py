@@ -9,7 +9,8 @@ database = Database()
 
 class ActionType:
 
-    def __init__(self, action: str, str_type: str, *need_args, secured: bool = False):
+    def __init__(self, action: str, str_type: str, 
+            *need_args, secured: bool = False):
         self.action = action
         self.str_type = str_type
         self.need_args = need_args
@@ -30,7 +31,7 @@ class ActionType:
         if len(args):
             return Action.gen_action("need_args", "error", args=args)
 
-        if self.secured:
+        if self.secured or "for_id" in _dict:
             if "hash_key" not in _dict:
                 return Action.gen_action("need_hash_key", "error")
 
@@ -54,7 +55,7 @@ class ActionType:
 
 class ActionTypeMethod(ActionType):
     def __init__(self, str_type: str, *need_args, secured: bool = False):
-        super().__init__("method", str_type=str_type, *need_args, secured=secured)
+        super().__init__("method", str_type, *need_args, secured=secured)
 
 
 class ActionTypeError(ActionType):
@@ -92,7 +93,8 @@ class Action:
 class Methods(Action):
     action = "method"
 
-    COMPUTER_DISCONNECT = ActionTypeMethod("computer.disconnect")
+    COMPUTER_DISCONNECT = ActionTypeMethod(str_type="computer.disconnect")
+    GET_COMPUTERS = ActionTypeMethod("computers.get_all")
 
     BUTTON_CLICK = ActionTypeMethod("button.click")
     BUTTON_ADD = ActionTypeMethod("button.add", "name", "text")
@@ -112,6 +114,7 @@ class Errors(Action):
 
     USER_NOT_FOUND = ActionTypeError("user_not_found")
 
+    COMPUTER_NOT_FOUND = ActionTypeError("computer_not_found")
 
 class Button:
     def __init__(self, name, text):
@@ -183,7 +186,7 @@ class Computer(IComputer):
 
         self.timeout = 20
 
-        self.buttons = {}
+        self.buttons: Dict[str, Button] = {}
         self.actions = []
 
     def add_button(self, button_name: str, button_text: str):
@@ -222,35 +225,50 @@ class Computer(IComputer):
 
         if action == "method":
             val = Methods.parse(data)
+            target_comp = self
+            if "for_id" in data:
+                target_comp = self.handler.get_computer(self.user_name, data["for_id"])
+                if target_comp is None:
+                    return [Errors.COMPUTER_NOT_FOUND.gen_action()]
 
             if isinstance(val, dict):
                 return [val]
 
             if val == Methods.COMPUTER_DISCONNECT:
                 if not broadcast:
-                    self.disconnect()
+                    target_comp.disconnect()
                 return [{"action": ""}]
 
             elif Methods.BUTTON_ADD == val:
                 if not broadcast:
-                    self.add_button(data["name"], data["text"])
+                    target_comp.add_button(data["name"], data["text"])
                 else:
                     self.handler.get_broadcast_computer(self.user_name).add_button(data["name"], data["text"])
 
             elif Methods.BUTTON_DELETE == val:
                 if data["name"] in self.buttons:
-                    del self.buttons[data["name"]]
+                    del target_comp.buttons[data["name"]]
                 else:
                     pass
 
             elif Methods.BUTTON_DELETE_ALL == val:
                 for button_name in [_ for _ in self.buttons]:
-                    del self.buttons[button_name]
+                    del target_comp.buttons[button_name]
+
             elif val == Methods.BUTTON_CLICK:
                 if not broadcast:
-                    self.press_button(data["name"])
+                    target_comp.press_button(data["name"])
                 else:
                     self.handler.get_broadcast_computer(self.user_name).press_button(data["name"])
+
+            elif val == Methods.GET_COMPUTERS:
+                computers = {}
+                for comp in self.handler.get_user_computers(self.user_name):
+                    computers[comp.id] = {"name": comp.name,
+                                          "buttons": [bt_name for bt_name in comp.buttons]
+                                          }
+                ret.append({"type": "method_result", "method": Methods.GET_COMPUTERS.str_type,
+                            "computers": computers})
 
             return ret
 

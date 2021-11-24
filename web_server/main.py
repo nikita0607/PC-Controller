@@ -170,8 +170,9 @@ def create_hash_key():
 @check_login(True)
 def computers():
     user_name = flask.session["login"]
-    return render_template("computers.html", computers=comp_handler.get_user_computers(user_name), user_name=user_name,
-                           port="5000", ip=app_ip, len=len, none=None)
+    return render_template("computers.html", 
+            computers=comp_handler.get_user_computers(user_name), 
+            user_name=user_name, port="5000", ip=app_ip, len=len, none=None)
 
 
 @app.route("/computers/<int:_id>/button_click/<string:button_name>")
@@ -189,51 +190,6 @@ def button_click(_id, button_name):
         main_logger.log("Computer not found!", _id, name=flask.session["login"])
 
     return redirect("/computers")
-
-
-@app.route("/a", methods=["POST", "GET"])
-def comp_connect():
-    if flask.request.method == "GET":
-        return "Only for computer connection!"
-
-    data = flask.request.get_json()
-
-    if data is None:
-        data = {}
-    else:
-        data = json.loads(data)
-
-    print(data, type(data))
-
-    if "user_name" in data:
-        user_name = data["user_name"]
-        flask.session["user_name"] = user_name
-    elif "user_name" in flask.session:
-        user_name = flask.session["user_name"]
-    else:
-        return jsonify({"count": 1, "actions": [Errors.gen_action(Errors.NEED_ARGS)]})
-
-    name = flask.request.remote_addr
-    if "name" in data:
-        name = data["name"]
-        flask.session["name"] = name
-    elif "name" in flask.session:
-        name = flask.session["name"]
-
-    if not database.is_user(user_name):
-        return jsonify({"count": 1, "actions": [Errors.gen_action(Errors.USER_NOT_FOUND)]})
-    
-    computer = comp_handler.get_computer(user_name, flask.request.remote_addr, create_new=True, name=name)
-    computer.checked()
-
-    parsed_answer = computer.parse_answer(data)
-
-    if isinstance(parsed_answer, dict):
-        parsed_answer = [parsed_answer]
-
-    print(parsed_answer)
-
-    return jsonify({"count": len(parsed_answer), "actions": parsed_answer})
 
 
 comp_handler.run()
