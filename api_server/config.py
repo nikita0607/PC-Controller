@@ -2,3 +2,6 @@ DEBUG = True
 
 HOST = ""
 PORT = 5005
+
+
+DATABASE_HOST = "192.168.1.137"

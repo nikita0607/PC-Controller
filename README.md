@@ -11,7 +11,7 @@ python3 -m pip install -r requirements.txt
 
 2) Запустите его
 ```shell
-python3 main.py
+python3 database.py
 ```
 
 Первый запуск создаст файл config.json:
@@ -28,7 +28,7 @@ python3 main.py
 
 Если вы все сделали правильно, вы увидете:
 ```shell
-$ python3 main.py
+$ python3 database.py
  * Serving Flask app 'main' (lazy loading)
  * Environment: production
    WARNING: This is a development server. Do not use it in a production deployment.

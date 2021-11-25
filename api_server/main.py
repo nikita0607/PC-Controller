@@ -13,6 +13,8 @@ from computer import *
 app = Flask(__name__)
 app.config['SECRET_KEY'] = "skzhef3720t92497tyasojgke4892035ui"
 
+comp_handler = ComputerHandler()
+
 
 @app.route("/api-doc")
 def api_doc():
@@ -29,7 +31,7 @@ def api():
     if data is None:
         data = {}
     else:
-        data = json.loads(data)
+        data = json.loads(data) if not isinstance(data, dict) else data
 
     print(data, type(data))
 
@@ -62,6 +64,7 @@ def api():
     print(parsed_answer)
 
     return jsonify({"count": len(parsed_answer), "actions": parsed_answer})
+
 
 if __name__ == "__main__":
     app.run(debug=DEBUG, port=PORT, host=HOST)
