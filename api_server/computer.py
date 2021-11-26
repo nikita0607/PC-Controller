@@ -9,8 +9,8 @@ database = Database()
 
 class ActionType:
 
-    def __init__(self, action: str, str_type: str, 
-            *need_args, secured: bool = False):
+    def __init__(self, action: str, str_type: str,
+                 *need_args, secured: bool = False):
         self.action = action
         self.str_type = str_type
         self.need_args = need_args
@@ -115,6 +115,7 @@ class Errors(Action):
     USER_NOT_FOUND = ActionTypeError("user_not_found")
 
     COMPUTER_NOT_FOUND = ActionTypeError("computer_not_found")
+
 
 class Button:
     def __init__(self, name, text):

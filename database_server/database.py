@@ -15,7 +15,7 @@ class Database:
         with sqlite3.connect("database.db") as db:
             sql = db.cursor()
 
-            sql.execute("CREATE TABLE IF NOT EXISTS users (login, password, id INT, hash_key)")
+            sql.execute("CREATE TABLE IF NOT EXISTS users (login, password, id INT, hash_keys)")
 
         with sqlite3.connect("database.db") as db:
             sql = db.cursor()
@@ -24,7 +24,7 @@ class Database:
             self.user_count = sql.fetchone()[0]
 
     @staticmethod
-    def is_user(login):
+    def check_user_login(login):
         login = sha256(login.encode()).hexdigest()
 
         with sqlite3.connect("database.db") as db:
@@ -37,32 +37,40 @@ class Database:
 
             return False
 
-    def create_hash_key(self, user_name: str):
+    @staticmethod
+    def create_hash_key(user_name: str) -> str:
         with sqlite3.connect("database.db") as db:
             sql = db.cursor()
             hash_key = sha256(choice("kadvfiuawvfakt4jm").encode()).hexdigest()
+            login = sha256(user_name.encode()).hexdigest()
 
-            sql.execute("UPDATE users SET hash_key=? WHERE login=?", (hash_key, sha256(user_name.encode()).hexdigest(),))
+            sql.execute("SELECT hash_keys FROM users WHERE user_name=?", (user_name,))
+            hash_keys = sql.fetchone()[0] + f"  {hash_key}"
 
-            self.user_hash_cache[user_name] = hash_key
+            sql.execute("UPDATE users SET hash_keys=? WHERE login=?", (hash_keys, login))
 
-    def get_hash_key(self, user_name: str) -> Union[str, None]:
-        if user_name in self.user_hash_cache:
-            return self.user_hash_cache[user_name]
+        return hash_key
 
+    @staticmethod
+    def get_hash_keys(user_name) -> list[str]:
         with sqlite3.connect("database.db") as db:
             sql = db.cursor()
 
-            sql.execute("SELECT hash_key FROM users WHERE login=?", (sha256(user_name.encode()).hexdigest(),))
-            hash_key = sql.fetchone()[0]
+            sql.execute("SELECT hash_keys FROM users WHERE login=?", (sha256(user_name.encode()).hexdigest(),))
+            hash_keys = sql.fetchone()[0].split("  ")
 
-            if hash_key != "":
-                return hash_key
-            else:
-                return None
+        return hash_keys
 
     @staticmethod
-    def check_user(login, password):
+    def check_hash_key(user_name: str, hash_key: str) -> bool:
+        hash_keys = Database.get_hash_keys(user_name)
+
+        if hash_key in hash_keys:
+            return True
+        return False
+
+    @staticmethod
+    def check_user(login, password) -> bool:
         login, password = sha256(login.encode()).hexdigest(), sha256(password.encode()).hexdigest()
         with sqlite3.connect("database.db") as db:
             sql = db.cursor()
@@ -80,7 +88,7 @@ class Database:
         with sqlite3.connect("database.db") as db:
             sql = db.cursor()
 
-            if self.is_user(login):
+            if self.check_user_login(login):
                 return False
             login, password = sha256(login.encode()).hexdigest(), sha256(password.encode()).hexdigest()
             print(login)

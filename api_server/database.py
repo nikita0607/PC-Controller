@@ -1,4 +1,5 @@
 import aiohttp
+import requests
 
 from config import DATABASE_HOST
 
@@ -14,21 +15,85 @@ class Database:
         self.user_hash_cache = {}
 
     @staticmethod
-    def is_user(login):
-        pass
+    async def check_user_login(login):
+        data = {"action": "check_user_login", "login": login}
 
-    def create_hash_key(self, user_name: str):
-        hash_key = ""
+        async with aiohttp.ClientSession() as session:
+            async with session.post(DATABASE_HOST, data=data) as resp:
+                response = await resp.json()
 
-        self.user_hash_cache[user_name] = hash_key
-
-    def get_hash_key(self, user_name: str) -> Union[str, None]:
-        if user_name in self.user_hash_cache:
-            return self.user_hash_cache[user_name]
+                if "result" in response:
+                    return response["result"]
+                else:
+                    print("Database 'check_user_login' ERROR!")
+                    return False
 
     @staticmethod
-    def check_user(login, password):
-        pass
+    async def create_hash_key(user_name: str) -> str:
+        data = {"action": "create_hash_key", "login": user_name}
 
-    def new_user(self, login, password):
-        pass
+        async with aiohttp.ClientSession() as session:
+            async with session.post(DATABASE_HOST, json=data) as resp:
+                response = await resp.json()
+
+                if "result" in response:
+                    return response["result"]
+                else:
+                    print("Database 'create_hash_key' ERROR!")
+                    return ""
+
+    @staticmethod
+    async def get_hash_keys(user_name: str) -> list[str]:
+        data = {"action": "get_hash_keys", "login": user_name}
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(DATABASE_HOST, json=data) as resp:
+                response = await resp.json()
+
+                if "result" in response:
+                    return response["result"]
+                else:
+                    print("Database 'get_hash_keys' ERROR!")
+                    return []
+
+    @staticmethod
+    async def check_hash_key(user_name: str, hash_key) -> bool:
+        data = {"action": "check_hash_key", "login": user_name}
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(DATABASE_HOST, json=data) as resp:
+                response = await resp.json()
+
+                if "result" in response:
+                    return response["result"]
+                else:
+                    print("Database 'check_hash_key' ERROR!")
+                    return False
+
+    @staticmethod
+    async def check_user(login, password) -> bool:
+        data = {"action": "check_user", "login": login, "password": password}
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(DATABASE_HOST, json=data) as resp:
+                response = await resp.json()
+
+                if "result" in response:
+                    return response["result"]
+                else:
+                    print("Database 'check_user' ERROR!")
+                    return False
+
+    @staticmethod
+    async def new_user(login, password) -> bool:
+        data = {"action": "register", "login": login, "password": password}
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(DATABASE_HOST, json=data) as resp:
+                response = await resp.json()
+
+                if "result" in response:
+                    return response["result"]
+                else:
+                    print("Database 'create_hash_key' ERROR!")
+                    return False

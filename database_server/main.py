@@ -18,6 +18,7 @@ class Body(BaseModel):
 
     login: str = None
     password: str = None
+    hash_key: str = None
 
 
 app = FastAPI()
@@ -41,14 +42,19 @@ def error_to_dict(*errors: Exception):
     return json.loads(ValidationError(errors, Body).json())
 
 
+@app.get("/test")
+def test():
+    return "Test"
+
+
 @app.post("/")
 async def response(body: Body):
 
-    if body.action == "is_user":
+    if body.action == "check_user_login":
         error = validate(body, "login")
         if error:
             return error
-        return {"result": db.is_user(body.login)}
+        return {"result": db.check_user_login(body.login)}
 
     if body.action == "login":
         error = validate(body, "login", "password")
@@ -65,9 +71,16 @@ async def response(body: Body):
             return error_to_dict(AlreadyRegister())
         return {"result": "Ok"}
 
-    if body.action == "get_hash_key":
+    if body.action == "check_hash_key":
+        error = validate(body, "login", "hash_key")
+        if error:
+            return error
+
+        return {"result": db.check_hash_key(body.login, body.login)}
+
+    if body.action == "check_user":
         error = validate(body, "login", "password")
         if error:
             return error
 
-        return {"result": db.get_hash_key(body.login)}
+        return {"result": db.check_user(body.login, body.password)}
