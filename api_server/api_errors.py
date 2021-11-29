@@ -21,10 +21,15 @@ class WrongPassword(APIError):
 
 def validate(body: BaseModel, *args, msg: str = "Need this value") -> dict | None:
     _body = body.dict()
+
+    return validate_dict(_body)
+
+
+def validate_dict(_dict: dict, *args, msg: str = "Need this value") -> dict | None:
     errors = []
 
     for field in args:
-        if not _body[field]:
+        if not _dict[field]:
             errors.append(ErrorWrapper(ValueError(msg), field))
 
     if len(errors):
