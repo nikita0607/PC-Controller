@@ -41,7 +41,7 @@ async def api(body: Body):
     if body.action == "register":
         error = validate(body, "password")
         if error:
-            return error
+            return error.to_dict()
 
         res = await db.new_user(body.username, body.password)
         return {"result": res}
