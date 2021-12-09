@@ -1,6 +1,7 @@
 venv
 *__pycache__
 .idea
+.vscode
 database.db
 logs.log
 config.json
