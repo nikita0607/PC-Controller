@@ -102,5 +102,5 @@ class Database:
                 if "result" in response:
                     return response["result"]
                 else:
-                    print("Database 'create_hash_key' ERROR!")
+                    print("Database 'new_user' ERROR!")
                     return False
