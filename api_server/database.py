@@ -12,14 +12,12 @@ class Database:
 
     def __new__(cls):
         if cls.db_object is None:
-            cls.db_object = cls.__init__()
+            cls.db_object = super().__new__(cls)
         return cls.db_object
 
     def __init__(self):
         self.user_count = 0
         self.user_hash_cache = {}
-
-        self.db_object = self
 
     @staticmethod
     async def check_user_login(login):

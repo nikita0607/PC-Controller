@@ -46,7 +46,7 @@ async def api(body: Body):
         connection.logged_with_password = False
     elif body.password:
         if not await db.check_user(body.username, body.password):
-            return WrongPassword.to_dict()
+            return WrongLoginData.to_dict()
         connection.logged_in = True
         connection.logged_with_password = True
 

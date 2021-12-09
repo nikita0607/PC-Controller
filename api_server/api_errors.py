@@ -8,24 +8,31 @@ class APIError(Exception):
     msg = "Unknown error"
     code = 0
 
-    def __init__(self, loc=""):
-        super().__init__(self.msg)
-        self._loc = loc
+    def __new__(cls, loc="", _init_this=False):
+        if _init_this:
+            return super().__new__(cls, cls.msg)
+        return APIErrorInit(cls.msg, loc)
 
-    def to_wrapper(self):
-        return ErrorWrapper(self, self._loc)
-
-    def to_dict(self):
-        error = self.to_wrapper()
+    @classmethod
+    def to_dict(cls, loc: str = ""):
+        error = ErrorWrapper(cls(_init_this=True), loc)
 
         _json: dict = json.loads(ValidationError([error], BaseModel).json())[0]
         _json.pop("ctx")
 
         return _json
 
-    @classmethod
+
+class APIErrorInit(Exception):
+    def __init__(self, msg: str = "Unknown error", loc: str = ""):
+        self.msg = msg
+        self._loc = loc
+
+    def to_wrapper(self):
+        return ErrorWrapper(self, self._loc)
+
     def to_dict(self):
-        error = ErrorWrapper(cls(cls.msg), "")
+        error = ErrorWrapper(self, self._loc)
 
         _json: dict = json.loads(ValidationError([error], BaseModel).json())[0]
         _json.pop("ctx")
@@ -35,23 +42,18 @@ class APIError(Exception):
 
 class APIErrorList:
     def __init__(self, *errors):
-        self.errors: list[APIError] = list(errors)
+        self.errors: list[APIErrorInit] = list(errors)
 
     @property
     def count(self):
         return len(self.errors)
 
-    def add(self, error: APIError):
+    def add(self, error: APIErrorInit):
         self.errors.append(error)
 
-    def to_dict(self):
-        errors: list[ErrorWrapper] = [error.to_wrapper() for error in self.errors]
-        _json: list = json.loads(ValidationError(errors, BaseModel).json())
-
-        for i in range(len(_json)):
-            _json[i].pop("ctx")
-        
-        return _json
+    def to_dict(self) -> list:
+        errors: list[dict] = [error.to_dict() for error in self.errors]
+        return errors
 
     def __str__(self):
         return str(self.errors)

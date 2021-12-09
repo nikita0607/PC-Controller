@@ -22,7 +22,7 @@ class Method:
     def __eq__(self, other):
         return str(self) == other
 
-    def validate(self, _dict: dict) -> APIError:
+    def validate(self, _dict: dict) -> APIErrorList:
         res = validate_dict(_dict, *self.required_values)
         return res if res else self
 
@@ -59,7 +59,7 @@ class EventValue:
 
 class Event:
     def to_dict(self) -> dict:
-        return {i: getattr(self, i) for i in cls.__dict__ if isinstance(cls.__dict__[i], EventValue)}
+        return {i: getattr(self, i) for i in self.__dict__ if isinstance(self.__dict__[i], EventValue)}
 
 
 class ButtonClickEvent(Event):
@@ -103,7 +103,7 @@ class ComputerController:
     def get_computer_by_name(self, username: str, name: str) -> Computer | APIError:
         if username in self.computers and name in self.computers[username]:
             return self.computers[username][name]
-        return UnknownComputer
+        return UnknownComputer.to_dict()
 
     def check_computer_hash_key(self, username: str, name: str, hash_key: str) -> APIError | None:
         _comp = self.get_computer_by_name(username, name)
@@ -112,7 +112,7 @@ class ComputerController:
             return _comp
         
         if hash_key != _comp.hash_key:
-            return WrongHashKey
+            return WrongHashKey.to_dict()
 
     def parse_action(self, conn: Connection, action: dict):
         error = validate_dict(action, "method")
@@ -195,7 +195,7 @@ class ComputerController:
 
 
 if __name__ == '__main__':  
-    error: APIError = Methods.find_and_validate({"method": "computer.connect", "name": "Test"})
+    error = Methods.find_and_validate({"method": "computer.connect", "name": "Test"})
     if isinstance(error, APIErrorList):
         print(error.to_dict())
     print(error)
