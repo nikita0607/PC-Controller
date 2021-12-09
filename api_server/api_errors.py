@@ -8,15 +8,34 @@ class APIError(Exception):
     msg = "Unknown error"
     code = 0
 
+    def __init__(self, loc=""):
+        super().__init__(self.msg)
+        self._loc = loc
+
+    def to_wrapper(self):
+        return ErrorWrapper(self, self._loc)
+
+    def to_dict(self):
+        error = self.to_wrapper()
+
+        _json: dict = json.loads(ValidationError([error], BaseModel).json())[0]
+        _json.pop("ctx")
+
+        return _json
+
     @classmethod
-    def to_dict(cls):
-        error = ErrorWrapper(cls(cls.msg))
-        return json.loads(ValidationError([error], BaseModel).json())
+    def to_dict(self):
+        error = ErrorWrapper(cls(cls.msg), "")
+
+        _json: dict = json.loads(ValidationError([error], BaseModel).json())[0]
+        _json.pop("ctx")
+
+        return _json
 
 
 class APIErrorList:
     def __init__(self, *errors):
-        self.errors: list[APIError] = errors
+        self.errors: list[APIError] = list(errors)
 
     @property
     def count(self):
@@ -26,8 +45,21 @@ class APIErrorList:
         self.errors.append(error)
 
     def to_dict(self):
-        errors: list[ErrorWrapper] = list(map(lambda error: ErrorWrapper(error), self.errors))
-        return json.loads(ValidationError(errors, BaseModel).json())
+        errors: list[ErrorWrapper] = [error.to_wrapper() for error in self.errors]
+        _json: list = json.loads(ValidationError(errors, BaseModel).json())
+
+        for i in range(len(_json)):
+            _json[i].pop("ctx")
+        
+        return _json
+
+    def __str__(self):
+        return str(self.errors)
+
+
+class MissedValue(APIError):
+    msg = "Missed required value"
+    code = 5
 
 
 class WrongHashKey(APIError):
@@ -60,8 +92,8 @@ def validate_dict(_dict: dict, *args, msg: str = "Need this value") -> APIErrorL
     error_list = APIErrorList()
 
     for field in args:
-        if not _dict[field]:
-            error_list.add(ValueError(msg))
+        if field not in _dict or not _dict[field]:
+            error_list.add(MissedValue(field))
 
     if error_list.count:
         return error_list

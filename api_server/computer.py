@@ -1,8 +1,7 @@
 import asyncio
-from api_server.api_errors import APIError, NameBusy, UnknownComputer, WrongHashKey
 
 from connection import Connection
-from api_errors import *
+from api_errors import APIError, APIErrorList, NameBusy, UnknownComputer, WrongHashKey, validate_dict
 from database import Database
 
 from hashlib import sha256
@@ -12,10 +11,10 @@ from random import randint
 class Method:
     def __init__(self, string, *required_values, need_hash_key: bool = True):
         self.string = string
-        self.required_values = required_values
+        self.required_values = list(required_values)
 
         if need_hash_key:
-            required_values.append("hash_key")
+            self.required_values.append("hash_key")
 
     def __str__(self):
         return self.string
@@ -23,7 +22,7 @@ class Method:
     def __eq__(self, other):
         return str(self) == other
 
-    def validate(self, _dict: dict) -> APIError | self:
+    def validate(self, _dict: dict) -> APIError:
         res = validate_dict(_dict, *self.required_values)
         return res if res else self
 
@@ -37,7 +36,7 @@ class Methods:
     BUTTON_CLICK = Method("computer.button.click", "username", "name", "button_name")
 
     @classmethod
-    def find_and_validate(cls, _dict) -> APIError | Method | None:
+    def find_and_validate(cls, _dict) -> APIErrorList | Method | None:
         methods: list[Method] = [cls.__dict__[i] for i in cls.__dict__ if isinstance(cls.__dict__[i], Method)]
 
         for method in methods:
@@ -54,13 +53,13 @@ class EventValue:
     def __init__(self, default_value=None):
         self.value = default_value
 
-    def __get__(self, *):
+    def __get__(self, *args):
         return self.value
 
 
 class Event:
-    def to_dict() -> dict:
-        return [i: getattr(self, i) for i in cls.__dict__ if isinstance(cls.__dict__[i], EventValue)]
+    def to_dict(self) -> dict:
+        return {i: getattr(self, i) for i in cls.__dict__ if isinstance(cls.__dict__[i], EventValue)}
 
 
 class ButtonClickEvent(Event):
@@ -199,4 +198,7 @@ class ComputerController:
 
 
 if __name__ == '__main__':  
-    print(Methods.find_and_validate({"method": "computer.connect"}))
+    error: APIError = Methods.find_and_validate({"method": "computer.connect", "name": "Test"})
+    if isinstance(error, APIErrorList):
+        print(error.to_dict())
+    print(error)
