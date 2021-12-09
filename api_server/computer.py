@@ -44,6 +44,11 @@ class Methods:
             if method.string == _dict["method"]:
                 return method.validate(_dict)
 
+            
+class UserMethods(Methods):
+    REGISTER = Method("user.register", "username", "password", need_hash_key=False)
+    GET_COMPUTERS = Method("user.get_computers", "username", "password", need_hash_key=False)
+
 
 class EventValue:
     def __init__(self, default_value=None):
@@ -86,7 +91,9 @@ class Computer:
                 self.events.append(ButtonClickEvent())
             return True
         return False
-        
+
+    def to_dict(self):
+        return {"name": self.name, "buttons": self.buttons}
     
 
 class ComputerController:
@@ -128,6 +135,7 @@ class ComputerController:
         name_error = validate_dict(action, "name")
         hash_key_error = (validate_dict(action, "name", "hash_key") or
                             self.check_computer_hash_key(action["username"], action["name"], action["hash_key"]))
+
         computer = self.get_computer_by_name(action["username"], action["name"])
         computer_error = computer if isinstance(computer, APIError) else None
         
@@ -174,6 +182,20 @@ class ComputerController:
             computer.click(action["button_name"])
             
             return {"result": True}
+
+        if method == UserMethods.REGISTER:
+            if self.db.new_user(action["username"], action["password"]):
+                return NameBusy.to_dict()
+
+            return {"result": True}
+
+        if method == UserMethods.GET_COMPUTERS:
+            if not self.db.check_user(action["login"], action["password"]):
+                return WrongLoginData.to_dict()
+
+            if action["username"] not in self.computers:
+                return {"result": []}
+            return {"result": [comp.to_dict() for comp in self.computers[action["username"]]]}
 
 
 if __name__ == '__main__':  

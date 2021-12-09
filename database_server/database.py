@@ -90,6 +90,7 @@ class Database:
 
             if self.check_user_login(login):
                 return False
+            
             login, password = sha256(login.encode()).hexdigest(), sha256(password.encode()).hexdigest()
             print(login)
             sql.execute("INSERT INTO users VALUES (?, ?, ?, '')", (login, password, self.user_count))
