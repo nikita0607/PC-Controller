@@ -38,14 +38,6 @@ def api_doc():
 async def api(body: Body):
     connection = Connection(body.username, False)
 
-    if body.action == "register":
-        error = validate(body, "password")
-        if error:
-            return error.to_dict()
-
-        res = await db.new_user(body.username, body.password)
-        return {"result": res}
-
     if body.hash_key:
         pass_auth = False
         if not await db.check_hash_key(body.username, body.hash_key):
@@ -60,5 +52,6 @@ async def api(body: Body):
 
     if body.computer_hash_key:
         connection.computer_hash_key = body.computer_hash_key
-
+    
+    comp_controller.parse_action(connection, body.dict())
 

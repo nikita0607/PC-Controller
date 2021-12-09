@@ -183,15 +183,12 @@ class ComputerController:
             return {"result": True}
 
         if method == UserMethods.REGISTER:
-            if self.db.new_user(action["username"], action["password"]):
+            if not self.db.new_user(action["username"], action["password"]):
                 return NameBusy.to_dict()
 
             return {"result": True}
 
         if method == UserMethods.GET_COMPUTERS:
-            if not self.db.check_user(action["login"], action["password"]):
-                return WrongLoginData.to_dict()
-
             if action["username"] not in self.computers:
                 return {"result": []}
             return {"result": [comp.to_dict() for comp in self.computers[action["username"]]]}
