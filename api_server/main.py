@@ -13,7 +13,7 @@ from database import Database
 
 
 class Body(BaseModel):
-    action: str
+    method: str
     username: str
     name: str = None
 
@@ -38,10 +38,14 @@ def api_doc():
 async def api(body: Body):
     connection = Connection(body.username, False)
 
+    if body.username:
+        if db.check_user_login(connection.login):
+            connection.is_user = True
+
     if body.hash_key:
         pass_auth = False
         if not await db.check_hash_key(body.username, body.hash_key):
-            return error_to_dict(WrongHashKey())
+            return WrongHashKey.to_dict()
         connection.logged_in = True
         connection.logged_with_password = False
     elif body.password:
@@ -53,5 +57,6 @@ async def api(body: Body):
     if body.computer_hash_key:
         connection.computer_hash_key = body.computer_hash_key
     
-    comp_controller.parse_action(connection, body.dict())
+    return comp_controller.parse_action(connection, body.dict())
+
 

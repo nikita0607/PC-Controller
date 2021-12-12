@@ -6,26 +6,31 @@ from pydantic.error_wrappers import ErrorWrapper
 
 class APIError(Exception):
     msg = "Unknown error"
+    type = "unknown_error"
     code = 0
 
     def __new__(cls, loc="", _init_this=False):
         if _init_this:
             return super().__new__(cls, cls.msg)
-        return APIErrorInit(cls.msg, loc)
+        return APIErrorInit(cls.msg, loc, cls.type)
 
     @classmethod
     def to_dict(cls, loc: str = ""):
-        error = ErrorWrapper(cls(_init_this=True), loc)
+        error = ErrorWrapper(cls.__new__(cls, _init_this=True), loc)
 
         _json: dict = json.loads(ValidationError([error], BaseModel).json())[0]
-        _json.pop("ctx")
+        _json.pop("ctx") if "ctx" in _json else None
+
+        _json["msg"] = cls.msg
+        _json["type"] = cls.type
 
         return _json
 
 
 class APIErrorInit(Exception):
-    def __init__(self, msg: str = "Unknown error", loc: str = ""):
+    def __init__(self, msg: str = "Unknown error", loc: str = "", _type: str = "unknown_error"):
         self.msg = msg
+        self.type = _type
         self._loc = loc
 
     def to_wrapper(self):
@@ -36,6 +41,9 @@ class APIErrorInit(Exception):
 
         _json: dict = json.loads(ValidationError([error], BaseModel).json())[0]
         _json.pop("ctx")
+
+        _json["msg"] = self.msg
+        _json["type"] = self.type
 
         return _json
 
@@ -61,27 +69,32 @@ class APIErrorList:
 
 class MissedValue(APIError):
     msg = "Missed required value"
-    code = 5
+    code = "5"
+    type = "missed_value"
 
 
 class WrongHashKey(APIError):
     msg = "Wrong hash key"
-    code = 1
+    code = "1"
+    type = "wrong_hash_key"
 
 
 class WrongLoginData(APIError):
     msg = "Wrong login or password"
-    code = 2
+    code = "2"
+    type = "wrong_login_data"
 
 
 class UnknownComputer(APIError):
     msg = "Unknown computer"
-    code = 3
+    code = "3"
+    type = "unknown_computer"
 
 
 class NameBusy(APIError):
     msg = "Name busy"
-    code = 4
+    code = "4"
+    type = "name_busy"
 
 
 def validate(body: BaseModel, *args, msg: str = "Need this value") -> APIErrorList | None:

@@ -1,7 +1,8 @@
 import asyncio
 
 from connection import Connection
-from api_errors import APIError, APIErrorList, NameBusy, UnknownComputer, WrongHashKey, validate_dict
+from api_errors import APIError, APIErrorList, NameBusy, UnknownComputer, WrongHashKey, WrongLoginData, validate_dict, \
+    APIErrorInit
 from database import Database
 
 from hashlib import sha256
@@ -100,10 +101,10 @@ class ComputerController:
         self.computers: dict[str, dict[str, Computer]] = {}
         self.db = Database()
 
-    def get_computer_by_name(self, username: str, name: str) -> Computer | APIError:
+    def get_computer_by_name(self, username: str, name: str) -> Computer | UnknownComputer:
         if username in self.computers and name in self.computers[username]:
             return self.computers[username][name]
-        return UnknownComputer.to_dict()
+        return UnknownComputer()
 
     def check_computer_hash_key(self, username: str, name: str, hash_key: str) -> APIError | None:
         _comp = self.get_computer_by_name(username, name)
@@ -118,6 +119,7 @@ class ComputerController:
         error = validate_dict(action, "method")
 
         if error:
+            print("Error: ", error)
             return error
 
         _method = action["method"]
@@ -126,8 +128,8 @@ class ComputerController:
         if validate_result is None:
             pass
 
-        if isinstance(validate_result, dict):
-            return validate_result
+        if isinstance(validate_result, APIErrorList):
+            return validate_result.to_dict()
 
         method = validate_result
 
@@ -137,20 +139,28 @@ class ComputerController:
 
         computer = self.get_computer_by_name(action["username"], action["name"])
         computer_error = computer if isinstance(computer, APIError) else None
-        
+
         if method == Methods.CONNECT:
+            if not conn.is_user:
+                return WrongLoginData.to_dict()
+
             if name_error:
                 return name_error.to_dict()
-            if not self.get_computer_by_name(action["username"], action["name"]):
+            if not isinstance(computer, APIErrorInit):
                 return NameBusy.to_dict()
+
             new_hash_key = sha256((action["username"]+action["name"]+str(randint(0, 100))).encode()).hexdigest()
 
             print(f"New hash key: {new_hash_key}")
 
-            computer: Computer = Computer(action["username"], action["name"], new_hash_key)
+            computer: Computer = Computer(conn.login, action["name"], new_hash_key)
+
+            if conn.login not in self.computers:
+                self.computers[conn.login] = {}
+
             self.computers[computer.username][computer.name] = computer
 
-            return {"result": True}
+            return {"result": True, "hash_key": new_hash_key}
 
         if method == Methods.PING:
             return {"result": True}
@@ -191,7 +201,7 @@ class ComputerController:
         if method == UserMethods.GET_COMPUTERS:
             if action["username"] not in self.computers:
                 return {"result": []}
-            return {"result": [comp.to_dict() for comp in self.computers[action["username"]]]}
+            return {"result": [comp.to_dict() for _, comp in self.computers[action["username"]].items()]}
 
 
 if __name__ == '__main__':  
