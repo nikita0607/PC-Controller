@@ -24,13 +24,13 @@ class Database:
         data = {"action": "check_user_login", "login": login}
 
         async with aiohttp.ClientSession() as session:
-            async with session.post(DATABASE_HOST, data=data) as resp:
+            async with session.post(DATABASE_HOST, json=data) as resp:
                 response = await resp.json()
 
                 if "result" in response:
                     return response["result"]
                 else:
-                    print("Database 'check_user_login' ERROR!")
+                    print(response, "Database 'check_user_login' ERROR!")
                     return False
 
     @staticmethod

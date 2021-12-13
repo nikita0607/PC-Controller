@@ -27,6 +27,10 @@ class Method:
         res = validate_dict(_dict, *self.required_values)
         return res if res else self
 
+    def __or__(self, other):
+        if other is None:
+            return self
+
 
 class Methods:
     CONNECT = Method("computer.connect", "name", need_hash_key=False)
@@ -44,7 +48,7 @@ class Methods:
             if method.string == _dict["method"]:
                 return method.validate(_dict)
 
-            
+
 class UserMethods(Methods):
     REGISTER = Method("user.register", "username", "password", need_hash_key=False)
     GET_COMPUTERS = Method("user.get_computers", "username", "password", need_hash_key=False)
@@ -94,28 +98,28 @@ class Computer:
 
     def to_dict(self):
         return {"name": self.name, "buttons": self.buttons}
-    
+
 
 class ComputerController:
     def __init__(self):
         self.computers: dict[str, dict[str, Computer]] = {}
         self.db = Database()
 
-    def get_computer_by_name(self, username: str, name: str) -> Computer | UnknownComputer:
+    async def get_computer_by_name(self, username: str, name: str) -> Computer | UnknownComputer:
         if username in self.computers and name in self.computers[username]:
             return self.computers[username][name]
         return UnknownComputer()
 
-    def check_computer_hash_key(self, username: str, name: str, hash_key: str) -> APIError | None:
-        _comp = self.get_computer_by_name(username, name)
+    async def check_computer_hash_key(self, username: str, name: str, hash_key: str) -> APIError | None:
+        _comp = await self.get_computer_by_name(username, name)
 
         if isinstance(_comp, APIError):
             return _comp
-        
+
         if hash_key != _comp.hash_key:
             return WrongHashKey.to_dict()
 
-    def parse_action(self, conn: Connection, action: dict):
+    async def parse_action(self, conn: Connection, action: dict):
         error = validate_dict(action, "method")
 
         if error:
@@ -123,7 +127,8 @@ class ComputerController:
             return error
 
         _method = action["method"]
-        validate_result = Methods.find_and_validate(action)
+
+        validate_result = Methods.find_and_validate(action) or UserMethods.find_and_validate(action)
 
         if validate_result is None:
             pass
@@ -135,9 +140,9 @@ class ComputerController:
 
         name_error = validate_dict(action, "name")
         hash_key_error = (validate_dict(action, "name", "hash_key") or
-                            self.check_computer_hash_key(action["username"], action["name"], action["hash_key"]))
+                          await self.check_computer_hash_key(action["username"], action["name"], action["hash_key"]))
 
-        computer = self.get_computer_by_name(action["username"], action["name"])
+        computer = await self.get_computer_by_name(action["username"], action["name"])
         computer_error = computer if isinstance(computer, APIError) else None
 
         if method == Methods.CONNECT:
@@ -149,7 +154,7 @@ class ComputerController:
             if not isinstance(computer, APIErrorInit):
                 return NameBusy.to_dict()
 
-            new_hash_key = sha256((action["username"]+action["name"]+str(randint(0, 100))).encode()).hexdigest()
+            new_hash_key = sha256((action["username"] + action["name"] + str(randint(0, 100))).encode()).hexdigest()
 
             print(f"New hash key: {new_hash_key}")
 
@@ -187,13 +192,14 @@ class ComputerController:
                 return name_error.to_dict()
             if computer_error:
                 return computer_error.to_dict()
-            
-            computer.click(action["button_name"])
-            
+
+            computer.button_click(action["button_name"])
+
             return {"result": True}
 
         if method == UserMethods.REGISTER:
-            if not self.db.new_user(action["username"], action["password"]):
+            print("register")
+            if not await self.db.new_user(action["username"], action["password"]):
                 return NameBusy.to_dict()
 
             return {"result": True}
@@ -203,8 +209,10 @@ class ComputerController:
                 return {"result": []}
             return {"result": [comp.to_dict() for _, comp in self.computers[action["username"]].items()]}
 
+        print(method, "Method not found!")
 
-if __name__ == '__main__':  
+
+if __name__ == '__main__':
     error = Methods.find_and_validate({"method": "computer.connect", "name": "Test"})
     if isinstance(error, APIErrorList):
         print(error.to_dict())

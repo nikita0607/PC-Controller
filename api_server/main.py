@@ -39,24 +39,24 @@ async def api(body: Body):
     connection = Connection(body.username, False)
 
     if body.username:
-        if db.check_user_login(connection.login):
+        if await db.check_user_login(connection.login):
             connection.is_user = True
 
-    if body.hash_key:
-        pass_auth = False
-        if not await db.check_hash_key(body.username, body.hash_key):
-            return WrongHashKey.to_dict()
-        connection.logged_in = True
-        connection.logged_with_password = False
-    elif body.password:
+    if body.password:
         if not await db.check_user(body.username, body.password):
-            return WrongLoginData.to_dict()
-        connection.logged_in = True
-        connection.logged_with_password = True
+            connection.logged_in = True
+            connection.logged_with_password = True
+    elif body.hash_key:
+        pass_auth = False
+        if await db.check_hash_key(body.username, body.hash_key):
+            connection.logged_in = True
+            connection.logged_with_password = False
 
     if body.computer_hash_key:
         connection.computer_hash_key = body.computer_hash_key
     
-    return comp_controller.parse_action(connection, body.dict())
+    res = await comp_controller.parse_action(connection, body.dict())
+    print(res)
+    return res
 
 
