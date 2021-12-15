@@ -1,4 +1,5 @@
 import json
+import os
 
 from fastapi import FastAPI
 
@@ -12,14 +13,22 @@ from connection import Connection
 from database import Database
 
 
-class Body(BaseModel):
+class Body:
     method: str
     username: str
-    name: str = None
+    password: str
 
-    password: str = None
-    hash_key: str = None
-    computer_hash_key: str = None
+    hash_key: str
+    computer_hash_key: str
+
+    def __init__(self, body: dict):
+        self._dict = body.copy()
+        body = null_missed_dict(body, "password", "hash_key")
+        for i in body:
+            setattr(self, i, body[i])
+
+    def dict(self):
+        return self._dict.copy()
 
 
 app = FastAPI()
@@ -35,7 +44,12 @@ def api_doc():
 
 
 @app.post("/api")
-async def api(body: Body):
+async def api(body: dict):
+    _error = validate_dict(body, "method", "username")
+    if _error:
+        return _error.json_alone()
+    body = Body(body)
+
     connection = Connection(body.username, False)
 
     if body.username:
@@ -51,12 +65,7 @@ async def api(body: Body):
         if await db.check_hash_key(body.username, body.hash_key):
             connection.logged_in = True
             connection.logged_with_password = False
-
-    if body.computer_hash_key:
-        connection.computer_hash_key = body.computer_hash_key
     
     res = await comp_controller.parse_action(connection, body.dict())
     print(res)
     return res
-
-

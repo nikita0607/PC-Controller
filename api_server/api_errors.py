@@ -4,6 +4,14 @@ from pydantic import BaseModel, ValidationError
 from pydantic.error_wrappers import ErrorWrapper
 
 
+class Error:
+    @classmethod
+    def is_error(cls, other):
+        if any(map(lambda x: isinstance(other, x), (APIError, APIErrorList, APIErrorInit))):
+            return True
+        return False
+
+
 class APIError(Exception):
     msg = "Unknown error"
     type = "unknown_error"
@@ -12,40 +20,33 @@ class APIError(Exception):
     def __new__(cls, loc="", _init_this=False):
         if _init_this:
             return super().__new__(cls, cls.msg)
-        return APIErrorInit(cls.msg, loc, cls.type)
+        return APIErrorInit(cls.msg, cls.code, loc, cls.type)
 
     @classmethod
-    def to_dict(cls, loc: str = ""):
-        error = ErrorWrapper(cls.__new__(cls, _init_this=True), loc)
+    def json(cls, loc: str = ""):
+        _error = {"loc": loc, "msg": cls.msg,  "type": cls.type, "code": cls.code}
 
-        _json: dict = json.loads(ValidationError([error], BaseModel).json())[0]
-        _json.pop("ctx") if "ctx" in _json else None
+        return _error
 
-        _json["msg"] = cls.msg
-        _json["type"] = cls.type
-
-        return _json
+    @classmethod
+    def json_alone(cls, loc: str = ""):
+        return {"result": "error", "errors": [cls.json()]}
 
 
 class APIErrorInit(Exception):
-    def __init__(self, msg: str = "Unknown error", loc: str = "", _type: str = "unknown_error"):
+    def __init__(self, msg: str = "Unknown error", code: int = 0, loc: str = "", _type: str = "unknown_error"):
         self.msg = msg
         self.type = _type
-        self._loc = loc
+        self.loc = loc
+        self.code = code
 
-    def to_wrapper(self):
-        return ErrorWrapper(self, self._loc)
+    def json(self):
+        _error = {"loc": self.loc,  "msg": self.msg, "type": self.type, "code": self.code}
 
-    def to_dict(self):
-        error = ErrorWrapper(self, self._loc)
+        return _error
 
-        _json: dict = json.loads(ValidationError([error], BaseModel).json())[0]
-        _json.pop("ctx")
-
-        _json["msg"] = self.msg
-        _json["type"] = self.type
-
-        return _json
+    def json_alone(self):
+        return {"result": "error", "errors": [self.json()]}
 
 
 class APIErrorList:
@@ -59,9 +60,12 @@ class APIErrorList:
     def add(self, error: APIErrorInit):
         self.errors.append(error)
 
-    def to_dict(self) -> list:
-        errors: list[dict] = [error.to_dict() for error in self.errors]
+    def json(self) -> list:
+        errors: list[dict] = [error.json() for error in self.errors]
         return errors
+
+    def json_alone(self) -> dict:
+        return {"result": "error", "errors": self.json()}
 
     def __str__(self):
         return str(self.errors)
@@ -69,31 +73,31 @@ class APIErrorList:
 
 class MissedValue(APIError):
     msg = "Missed required value"
-    code = "5"
+    code = 5
     type = "missed_value"
 
 
 class WrongHashKey(APIError):
     msg = "Wrong hash key"
-    code = "1"
+    code = 1
     type = "wrong_hash_key"
 
 
 class WrongLoginData(APIError):
     msg = "Wrong login or password"
-    code = "2"
+    code = 2
     type = "wrong_login_data"
 
 
 class UnknownComputer(APIError):
     msg = "Unknown computer"
-    code = "3"
+    code = 3
     type = "unknown_computer"
 
 
 class NameBusy(APIError):
     msg = "Name busy"
-    code = "4"
+    code = 4
     type = "name_busy"
 
 
@@ -114,6 +118,13 @@ def validate_dict(_dict: dict, *args, msg: str = "Need this value") -> APIErrorL
         return error_list
 
     return None
+
+
+def null_missed_dict(_dict: dict, *args):
+    for i in args:
+        if i not in _dict:
+            _dict[i] = None
+    return _dict
 
 
 def error_to_dict(*errors: Exception):

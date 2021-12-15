@@ -34,7 +34,7 @@ class ActionType:
 
         if self.secured or "for_id" in _dict:
             if "hash_key" not in _dict:
-                return Action.gen_action("need_hash_key", "error")
+                return Action.gen_action("need_login", "error")
 
             user_hash_key = database.get_hash_key(_dict["user_name"])
 
@@ -109,7 +109,7 @@ class Errors(Action):
 
     NEED_ARGS = ActionTypeError("need_args")
 
-    NEED_HASH_KEY = ActionTypeError("need_hash_key")
+    NEED_HASH_KEY = ActionTypeError("need_login")
     WRONG_HASH_KEY = ActionTypeError("wrong_hash_key")
     HASH_KEY_NOT_CREATED = ActionTypeError("hash_key_not_created")
 
