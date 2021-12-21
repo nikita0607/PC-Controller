@@ -71,6 +71,12 @@ class APIErrorList:
         return str(self.errors)
 
 
+class MethodNotFound(APIError):
+    msg = "Method not found"
+    code = 6
+    type = "method_not_found"
+
+
 class MissedValue(APIError):
     msg = "Missed required value"
     code = 5

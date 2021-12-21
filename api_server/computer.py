@@ -2,7 +2,7 @@ import asyncio
 
 from connection import Connection
 
-from api_errors import Error,  APIError, APIErrorList, NameBusy, UnknownComputer
+from api_errors import Error,  APIError, APIErrorList, NameBusy, UnknownComputer, MethodNotFound
 from api_errors import WrongHashKey, WrongLoginData, validate_dict, APIErrorInit
 
 from database import Database
@@ -39,7 +39,8 @@ class Methods:
     BUTTON_ADD = Method("computer.button.add", "name", "button_name", "button_text")
     BUTTON_CLICK = Method("computer.button.click", "name", "button_name")
 
-    EVENTS = Method("computer.events", "name")
+    EVENTS = Method("computer.get_events", "name")
+    INFO = Method("computer.get_info", "name")
 
     @classmethod
     def find_and_validate(cls, _dict) -> APIErrorList | Method | None:
@@ -64,12 +65,19 @@ class EventValue:
 
 
 class Event:
+    type = "unknown"
+
     def to_dict(self) -> dict:
-        return {i: getattr(self, i) for i in self.__dict__ if isinstance(self.__dict__[i], EventValue)}
+        _dict = {i: getattr(self, i) for i in self.__dict__ if isinstance(self.__dict__[i], EventValue)}
+        _dict["type"] = self.type
+
+        return _dict
 
 
 class ButtonClickEvent(Event):
-    def __init__(self):
+    type = "button_click"
+
+    def __init__(self, click_count=0):
         self.click_count = EventValue(0)
 
     def add_click(self):
@@ -100,12 +108,15 @@ class Computer:
     def json(self):
         return {"name": self.name, "buttons": self.buttons}
 
-    def events(self):
+    def json_events(self):
         _events = []
         for event in self.events:
             _events.append(event.to_dict())
 
         return _events
+
+    def clear_events(self):
+        self.events.clear()
 
 
 class ComputerController:
@@ -148,7 +159,7 @@ class ComputerController:
         validate_result = Methods.find_and_validate(action) or UserMethods.find_and_validate(action)
 
         if validate_result is None:
-            pass
+            return MethodNotFound.json()
 
         if Error.is_error(validate_result):
             return validate_result.json_alone()
@@ -221,6 +232,12 @@ class ComputerController:
             if action["username"] not in self.computers:
                 return {"result": []}
             return {"result": [comp.json() for _, comp in self.computers[action["username"]].items()]}
+
+        if method == Methods.INFO:
+            return {"result": computer.json()}
+
+        if method == Methods.EVENTS:
+            return {"result": computer.json_events()}
 
         print(method, "Method not found!")
 
