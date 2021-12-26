@@ -67,6 +67,9 @@ class EventValue:
 class Event:
     type = "unknown"
 
+    def __init__(_id: int):
+        self.id: int = _id
+
     def to_dict(self) -> dict:
         _dict = {i: getattr(self, i) for i in self.__dict__ if isinstance(self.__dict__[i], EventValue)}
         _dict["type"] = self.type
@@ -77,7 +80,8 @@ class Event:
 class ButtonClickEvent(Event):
     type = "button_click"
 
-    def __init__(self, click_count=0):
+    def __init__(self, _id: int, click_count=0):
+        super().__init__(_id)
         self.click_count = EventValue(0)
 
     def add_click(self):
@@ -96,22 +100,29 @@ class Computer:
     def add_button(self, name: str, text: str) -> None:
         self.buttons[name] = text
 
+    def get_new_id(self) -> int:
+        return len(self.event) + 1
+
     def button_click(self, button_name: str) -> bool:
         if button_name in self.buttons:
             if len(self.events) and isinstance(self.events[-1], ButtonClickEvent):
                 self.events[-1].add_click()
             else:
-                self.events.append(ButtonClickEvent())
+                self.events.append(ButtonClickEvent(self.get_new_id()))
             return True
         return False
 
     def json(self):
         return {"name": self.name, "buttons": self.buttons}
 
-    def json_events(self):
+    def json_events(self, start_id=0, count=10):
         _events = []
+        _count = 0
         for event in self.events:
-            _events.append(event.to_dict())
+            if _count > count:
+                break
+            if event.id >= start_id:
+                _events.append(event.to_dict())
 
         return _events
 
