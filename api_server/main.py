@@ -1,14 +1,16 @@
 import json
 import os
+import methods
+import controller
 
 from fastapi import FastAPI
 
 from pydantic import BaseModel
+from typing import Dict
 
 from config import *
 
 from api_errors import *
-from computer import *
 from connection import Connection
 from database import Database
 
@@ -32,10 +34,10 @@ class Body:
 
 
 app = FastAPI()
-comp_controller = ComputerController()
+comp_controller = controller.ComputerController()
 db = Database()
 
-hash_cash: dict[str] = {}
+hash_cash: Dict[str, str] = {}
 
 
 @app.get("/api-doc")
@@ -47,6 +49,7 @@ def api_doc():
 async def api(body: dict):
     _error = validate_dict(body, "method", "username")
     if _error:
+        print(_error)
         return _error.json_alone()
     body = Body(body)
 
@@ -66,6 +69,6 @@ async def api(body: dict):
             connection.logged_in = True
             connection.logged_with_password = False
     
-    res = await comp_controller.parse_action(connection, body.dict())
+    res = await methods.MethodParser.parse_action(comp_controller, connection, body.dict())
     print(res)
     return res

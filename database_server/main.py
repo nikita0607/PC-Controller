@@ -1,5 +1,7 @@
 import json
 
+from typing import Union
+
 from fastapi import FastAPI
 
 from pydantic import BaseModel, ValidationError
@@ -25,7 +27,7 @@ app = FastAPI()
 db = Database()
 
 
-def validate(body: BaseModel, *args) -> dict | None:
+def validate(body: BaseModel, *args) -> Union[dict, None]:
     _body = body.dict()
     errors = []
 

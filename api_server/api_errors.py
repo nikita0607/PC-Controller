@@ -1,5 +1,7 @@
 import json
 
+from typing import Union
+
 from pydantic import BaseModel, ValidationError
 from pydantic.error_wrappers import ErrorWrapper
 
@@ -107,13 +109,13 @@ class NameBusy(APIError):
     type = "name_busy"
 
 
-def validate(body: BaseModel, *args, msg: str = "Need this value") -> APIErrorList | None:
+def validate(body: BaseModel, *args, msg: str = "Need this value") -> Union[APIErrorList, None]:
     _body = body.dict()
 
     return validate_dict(_body)
 
 
-def validate_dict(_dict: dict, *args, msg: str = "Need this value") -> APIErrorList | None:
+def validate_dict(_dict: dict, *args, msg: str = "Need this value") -> Union[APIErrorList, None]:
     error_list = APIErrorList()
 
     for field in args:

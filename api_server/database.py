@@ -4,7 +4,7 @@ import requests
 from config import DATABASE_HOST
 
 from random import choice
-from typing import Union
+from typing import Union, List
 
 
 class Database:
@@ -28,6 +28,7 @@ class Database:
                 response = await resp.json()
 
                 if "result" in response:
+                    print(response)
                     return response["result"]
                 else:
                     print(response, "Database 'check_user_login' ERROR!")
@@ -48,7 +49,7 @@ class Database:
                     return ""
 
     @staticmethod
-    async def get_hash_keys(user_name: str) -> list[str]:
+    async def get_hash_keys(user_name: str) -> List[str]:
         data = {"action": "get_hash_keys", "login": user_name}
 
         async with aiohttp.ClientSession() as session:
@@ -82,11 +83,12 @@ class Database:
         async with aiohttp.ClientSession() as session:
             async with session.post(DATABASE_HOST, json=data) as resp:
                 response = await resp.json()
-
+                
                 if "result" in response:
                     return response["result"]
                 else:
                     print("Database 'check_user' ERROR!")
+                    print(response)
                     return False
 
     @staticmethod

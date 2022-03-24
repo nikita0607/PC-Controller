@@ -2,7 +2,7 @@ import sqlite3
 
 from hashlib import sha256
 from random import choice
-from typing import Union
+from typing import Union, List
 
 
 class Database:
@@ -52,7 +52,7 @@ class Database:
         return hash_key
 
     @staticmethod
-    def get_hash_keys(user_name) -> list[str]:
+    def get_hash_keys(user_name) -> List[str]:
         with sqlite3.connect("database.db") as db:
             sql = db.cursor()
 
@@ -72,6 +72,7 @@ class Database:
     @staticmethod
     def check_user(login, password) -> bool:
         login, password = sha256(login.encode()).hexdigest(), sha256(password.encode()).hexdigest()
+        print(login, password)
         with sqlite3.connect("database.db") as db:
             sql = db.cursor()
 
@@ -79,9 +80,10 @@ class Database:
 
             user = sql.fetchone()
             print(login)
+            print(user)
             if user is None or user[1] != password:
                 return False
-
+            print("GOOD")
             return True
 
     def new_user(self, login, password):
@@ -89,6 +91,7 @@ class Database:
             sql = db.cursor()
 
             if self.check_user_login(login):
+                print("It's real user")
                 return False
             
             login, password = sha256(login.encode()).hexdigest(), sha256(password.encode()).hexdigest()
@@ -97,4 +100,4 @@ class Database:
 
             self.user_count += 1
 
-            return True
+        return True
