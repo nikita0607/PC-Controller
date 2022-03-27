@@ -28,6 +28,7 @@ class Event:
     def to_dict(self) -> dict:
         _dict = {i: getattr(self, i) for i in self.__dict__ if isinstance(self.__dict__[i], EventValue)}
         _dict["type"] = self.type
+        _dict["id"] = self.id
 
         return _dict
 
@@ -35,9 +36,10 @@ class Event:
 class ButtonClickEvent(Event):
     type = "button_click"
 
-    def __init__(self, _id: int, click_count=0):
+    def __init__(self, _id: int, button_name, click_count=0):
         super().__init__(_id)
         self.click_count = EventValue(0)
+        self.name = EventValue(button_name)
 
     def add_click(self):
         self.click_count.value += 1
@@ -63,7 +65,7 @@ class Computer:
             if len(self.events) and isinstance(self.events[-1], ButtonClickEvent):
                 self.events[-1].add_click()
             else:
-                self.events.append(ButtonClickEvent(self.get_new_id()))
+                self.events.append(ButtonClickEvent(self.get_new_id(), button_name))
                 self.events[-1].add_click()
             return True
         return False
@@ -79,6 +81,7 @@ class Computer:
                 break
             if event.id >= start_id:
                 _events.append(event.to_dict())
+                count += 1
 
         return _events
 

@@ -40,7 +40,5 @@ class ComputerController:
         if Error.is_error(_comp):
             return _comp
 
-        print(_comp)
-
         if hash_key != _comp.hash_key:
             return WrongHashKey

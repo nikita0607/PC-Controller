@@ -49,7 +49,6 @@ def api_doc():
 async def api(body: dict):
     _error = validate_dict(body, "method", "username")
     if _error:
-        print(_error)
         return _error.json_alone()
     body = Body(body)
 
@@ -70,5 +69,4 @@ async def api(body: dict):
             connection.logged_with_password = False
     
     res = await methods.MethodParser.parse_action(comp_controller, connection, body.dict())
-    print(res)
     return res

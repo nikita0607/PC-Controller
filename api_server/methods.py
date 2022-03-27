@@ -83,7 +83,6 @@ class Method:
     async def _call_method(cls, method: str, controller, conn, action):
         if isinstance(method, Method):
             method = method.string
-        print(cls.methods_callbacks)
         return await cls.methods_callbacks[method](controller, conn, action)
 
 
@@ -164,7 +163,8 @@ async def computer_info(controller, conn, action, _computer: computer.Computer):
 @Method.method_callback("computer.get_events")
 @MethodSupport.get_computer()
 async def get_events(controller, conn, action, _computer: computer.Computer):
-    return {"result": _computer.json_events()}
+    _id = action["start_id"] if "start_id" in action else 0
+    return {"result": _computer.json_events(start_id=_id)}
 
 
 @Method.method_callback("computer.disconnect")
@@ -216,71 +216,13 @@ class MethodParser:
 
         return await method.call_method(_controller, conn, action)
 
-        """if method == Methods.CONNECT:
-            if not conn.is_user:
-                return WrongLoginData.json_alone()
-
-            if name_error:
-                return name_error.json_alone()
-            if not computer_error:
-                return NameBusy.json_alone()
-
-            new_hash_key = sha256((action["username"] + action["name"] + str(randint(0, 100))).encode()).hexdigest()
-
-            print(f"New hash key: {new_hash_key}")
-
-            computer: Computer = Computer(conn.login, action["name"], new_hash_key)
-
-            if conn.login not in self.computers:
-                self.computers[conn.login] = {}
-
-            self.computers[computer.username][computer.name] = computer
-
-            return {"result": True, "hash_key": new_hash_key}
-
-        if method == Methods.PING:
-            return {"result": True}
-
-        if method == Methods.PING_ERROR:
-            return APIError.json()
-
-        if method == Methods.BUTTON_ADD:
-            computer.add_button(action["button_name"], action["button_text"])
-
-            return {"result": True}
-
-        if method == Methods.BUTTON_CLICK:
-            computer.button_click(action["button_name"])
-
-            return {"result": True}
-
-        if method == UserMethods.REGISTER:
-            print("register")
-            if not await self.db.new_u:"wser(action["username"], action["password"]):
-                return NameBusy.json()
-
-            return {"result": True}
-
-        if method == UserMethods.GET_COMPUTERS:
-            if action["username"] not in self.computers:
-                return {"result": []}
-            return {"result": [comp.json() for _, comp in self.computers[action["username"]].items()]}
-
-        if method == Methods.INFO:
-            return {"result": computer.json()}
-
-        if method == Methods.EVENTS:
-            return {"result": computer.json_events()}"""
-
         print(method, "Method not found!")
 
 
 class MethodBox(Enum):
     @classmethod
     async def find_and_validate(cls, _dict) -> Union[APIErrorList, Method, None]:
-        print(iter(cls))
         for method in cls:
-            print("Method: ", method, type(method.value))
             if method.value.string == _dict["method"]:
                 return method.value.validate(_dict)
 
@@ -288,7 +230,6 @@ class MethodBox(Enum):
     async def or_validate(cls, _dict, *methods) -> Union[Method, APIErrorList, None]:
         for m in methods[:-1]:
             val = await m.find_and_validate(_dict)
-            print("VAL: ", val)
             if isinstance(val, Method):
                 return val
             if Error.is_error(val):
