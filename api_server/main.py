@@ -14,6 +14,8 @@ from api_errors import *
 from connection import Connection
 from database import Database
 
+from debug import d_print
+
 
 class Body:
     method: str
@@ -52,21 +54,20 @@ async def api(body: dict):
         return _error.json_alone()
     body = Body(body)
 
-    connection = Connection(body.username, False)
+    connection = Connection(body.username, False, 0)
 
     if body.username:
         if await db.check_user_login(connection.login):
-            connection.is_user = True
+            connection.registered_user = True
 
     if body.password:
-        if not await db.check_user(body.username, body.password):
-            connection.logged_in = True
-            connection.logged_with_password = True
+        if await db.check_user(body.username, body.password):
+            connection.access_level = 2
     elif body.hash_key:
         pass_auth = False
         if await db.check_hash_key(body.username, body.hash_key):
-            connection.logged_in = True
-            connection.logged_with_password = False
-    
+            connection.access_level = 1
+
     res = await methods.MethodParser.parse_action(comp_controller, connection, body.dict())
+    d_print("DEBUG RES:", res)
     return res

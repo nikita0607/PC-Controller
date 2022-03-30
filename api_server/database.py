@@ -6,6 +6,8 @@ from config import DATABASE_HOST
 from random import choice
 from typing import Union, List
 
+from debug import d_print
+
 
 class Database:
     db_object = None
@@ -28,10 +30,10 @@ class Database:
                 response = await resp.json()
 
                 if "result" in response:
-                    print(response)
+                    d_print(response)
                     return response["result"]
                 else:
-                    print(response, "Database 'check_user_login' ERROR!")
+                    d_print(response, "Database 'check_user_login' ERROR!")
                     return False
 
     @staticmethod
@@ -45,7 +47,7 @@ class Database:
                 if "result" in response:
                     return response["result"]
                 else:
-                    print("Database 'create_hash_key' ERROR!")
+                    d_print("Database 'create_hash_key' ERROR!")
                     return ""
 
     @staticmethod
@@ -59,7 +61,7 @@ class Database:
                 if "result" in response:
                     return response["result"]
                 else:
-                    print("Database 'get_hash_keys' ERROR!")
+                    d_print("Database 'get_hash_keys' ERROR!")
                     return []
 
     @staticmethod
@@ -73,7 +75,7 @@ class Database:
                 if "result" in response:
                     return response["result"]
                 else:
-                    print("Database 'check_hash_key' ERROR!")
+                    d_print("Database 'check_hash_key' ERROR!")
                     return False
 
     @staticmethod
@@ -87,8 +89,7 @@ class Database:
                 if "result" in response:
                     return response["result"]
                 else:
-                    print("Database 'check_user' ERROR!")
-                    print(response)
+                    d_print(response, "Database 'check_user' ERROR!")
                     return False
 
     @staticmethod
@@ -102,5 +103,5 @@ class Database:
                 if "result" in response:
                     return response["result"]
                 else:
-                    print("Database 'new_user' ERROR!")
+                    d_print("Database 'new_user' ERROR!")
                     return False

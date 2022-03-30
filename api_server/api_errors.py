@@ -103,6 +103,12 @@ class UnknownComputer(APIError):
     type = "unknown_computer"
 
 
+class NotEnoughtAccessLevel(APIError):
+    msg = "Not enought access level"
+    code = 7
+    type = "not_enought_access_level"
+
+
 class NameBusy(APIError):
     msg = "Name busy"
     code = 4

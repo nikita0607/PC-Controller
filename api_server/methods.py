@@ -8,6 +8,7 @@ from enum import Enum
 
 from api_errors import Error,  APIError, APIErrorList, NameBusy, UnknownComputer, MethodNotFound
 from api_errors import WrongHashKey, WrongLoginData, validate_dict, APIErrorInit
+from api_errors import NotEnoughtAccessLevel
 
 from database import Database
 
@@ -54,13 +55,10 @@ class MethodSupport:
 class Method:
     methods_callbacks = {}
 
-    def __init__(self, string, *required_values, need_login: bool = True):
+    def __init__(self, string, *required_values, access_level: int = 0):
         self.string = string
         self.required_values = list(required_values)
-        self.need_login = need_login
-
-        if need_login:
-            self.required_values.append("hash_key")
+        self.access_level = access_level
 
     def __str__(self):
         return self.string
@@ -93,11 +91,11 @@ class Method:
 @MethodSupport.get_computer(False)
 async def computer_connect(controller, conn, action: dict, _computer):
     print("connect")
-    if not conn.is_user:
-        return WrongLoginData.json_alone()
+    if not conn.registered_user:
+        return WrongLoginData.json_alone("username")
 
     if not Error.is_error(_computer):
-        return NameBusy.json_alone()
+        return NameBusy.json_alone("name")
     
     new_hash_key = sha256((action["username"] + action["name"] + str(randint(0, 100))).encode()).hexdigest()
 
@@ -201,21 +199,18 @@ class MethodParser:
         method: Method = validate_result
 
         name_error = validate_dict(action, "name")
-        hash_key_error = (validate_dict(action, "name", "hash_key") or
+        hash_key_error = (validate_dict(action, "name", "c_hash_key") or
                           await _controller.check_computer_hash_key(action["username"], action["name"], action["hash_key"]))
 
         computer = await _controller.get_computer_by_name(action["username"], action["name"]) if not name_error else UnknownComputer
         computer_error = computer if Error.is_error(computer) else None
 
-        if method.need_login:
-            if not conn.logged_with_password:
-                if hash_key_error:
-                    print(hash_key_error)
-                    return hash_key_error.json_alone()
-            if name_error:
-                return name_error.json_alone()
-            if computer_error:
-                return computer_error.json_alone()
+        if method.access_level:
+            if conn.access_level < method.access_level:
+                return NotEnoughtAccessLevel.json_alone()
+            if conn.access_level == 0 and hash_key_error:
+                d_print(hash_key_error)
+                return hash_key_error.json_alone()
 
         return await method.call_method(_controller, conn, action)
 
