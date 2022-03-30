@@ -31,12 +31,15 @@ class MethodSupport:
         """ Decorator return computer with recieved 'username' and 'name' """
 
         def dec (callback):
-            async def wrapper(controller, conn, action, *args, 
-                **kwargs):
+            async def wrapper(controller, conn, action, *args, **kwargs):
+                name = action["name"]
+
+                if "for_name" in action:
+                    name = action["for_name"]
 
                 computer = await controller.get_computer_by_name(
                                                             action["username"],
-                                                            action["name"])
+                                                            name)
 
                 if Error.is_error(computer) and raise_not_found:
                     return computer.json_alone()

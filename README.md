@@ -6,49 +6,27 @@
 
 ```shell
 git clone https://github.com/nikita0607/PC-Controller.git
+cd PC-Controller
 python3 -m pip install -r requirements.txt
 ```
 
-2) Запустите его
+2) Запустите сервер с БД с помощью uvicorn в папке `database_server`
 ```shell
-python3 database.py
+uvicorn main:app --host YOUR_IP --port 8001
 ```
 
-Первый запуск создаст файл config.json:
-```json
-{"ip": ""}
+3) Откройте `config.py` в папке `api_server` и укажите IP сервера с БД
+```python
+..
+DATABASE_HOST = "http://YOUR_IP:8001"
 ```
 
-В поле ip введите локальный ip вашего сервера, например:
-```json
-{"ip": "127.0.0.1"}
-```
-
-3) Снова запустите его!
-
-Если вы все сделали правильно, вы увидете:
+4) Запустите API сервер
 ```shell
-$ python3 database.py
- * Serving Flask app 'main' (lazy loading)
- * Environment: production
-   WARNING: This is a development server. Do not use it in a production deployment.
-   Use a production WSGI server instead.
- * Debug mode: on
- * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 471-689-556
+uvicorn main:app --host YOUR_IP
 ```
 
-Теперь вы можете зайти на сайт с вашего сервера по адресу: [http://127.0.0.1:5000](http://127.0.0.1:5000)
-
-## Подключение
-
-Чтобы компьютеры могли локально подключатся к вашему серверу, для начала укажите в config.json локальный ip, например:
-```json
-{"ip": "192.168.0.100"}
-```
-
-Чтобы подключать компьютеры к серверу, вам нужно использовать клиент-приложение.
-Вы можете написать его сами.
-Для этого вы можете воспользоваться [этой библиотекой](https://github.com/nikita0607/PC-Controller-py) для Python
+## Что дальше?
+Теперь сервер может принимать API запросы.
+Для этого вы можете написать свой код с отправкой post-запросов.
+Или использовать [асинхронную библиотеку](https://github.com/nikita0607/PC-Controller-py) для Python:
