@@ -1,12 +1,14 @@
 import computer
+
 import connection
+from debug import d_print
 
 from controller import ComputerController
 
 from typing import Union, List
 from enum import Enum
 
-from api_errors import Error,  APIError, APIErrorList, NameBusy, UnknownComputer, MethodNotFound
+from api_errors import Error, APIError, APIErrorList, NameBusy, UnknownComputer, MethodNotFound
 from api_errors import WrongHashKey, WrongLoginData, validate_dict, APIErrorInit
 from api_errors import NotEnoughtAccessLevel
 
@@ -20,10 +22,9 @@ class MethodSupport:
     @staticmethod
     def get_database(callback):
         async def wrapper(controller, conn, action, *args,
-                **kwargs):
-
+                          **kwargs):
             return await callback(controller, conn, action, *args, **kwargs,
-                    database=Database())
+                                  database=Database())
 
         return wrapper
 
@@ -31,31 +32,37 @@ class MethodSupport:
     def get_computer(raise_not_found: bool = True):
         """ Decorator return computer with recieved 'username' and 'name' """
 
-        def dec (callback):
+        def dec(callback):
             async def wrapper(controller, conn, action, *args, **kwargs):
-                name = action["name"]
 
                 if "for_name" in action:
-                    name = action["for_name"]
 
-                computer = await controller.get_computer_by_name(
-                                                            action["username"],
-                                                            name)
+                    _computer = await controller.get_computer_by_name(
+                        action["username"],
+                        action["for_name"])
 
-                if Error.is_error(computer) and raise_not_found:
-                    return computer.json_alone()
+                else:
+                    _computer = await controller.get_computer_with_hashkey(
+                        action["username"],
+                        action["name"],
+                        action["c_hash_key"])
 
-                return await callback(controller, conn, action, *args, 
-                        **kwargs, _computer=computer)
-                                  
+
+                if Error.is_error(_computer) and raise_not_found:
+                    return _computer.json_alone()
+
+                return await callback(controller, conn, action, *args,
+                                      **kwargs, _computer=_computer)
+
             return wrapper
+
         return dec
 
 
 class Method:
     methods_callbacks = {}
 
-    def __init__(self, string, *required_values, access_level: int = 0):
+    def __init__(self, string, *required_values, access_level: int = 1):
         self.string = string
         self.required_values = list(required_values)
         self.access_level = access_level
@@ -69,18 +76,19 @@ class Method:
     def validate(self, _dict: dict) -> APIErrorList:
         res = validate_dict(_dict, *self.required_values)
         return res if res else self
-    
+
     @classmethod
     def method_callback(cls, method: str):
         def wrapper(callback):
             cls.methods_callbacks[method] = callback
             return callback
+
         return wrapper
 
     async def call_method(self, controller, conn, action: dict):
         return await self._call_method(self.string, controller, conn, action)
 
-    @classmethod 
+    @classmethod
     async def _call_method(cls, method: str, controller, conn, action):
         if isinstance(method, Method):
             method = method.string
@@ -96,7 +104,7 @@ async def computer_connect(controller, conn, action: dict, _computer):
 
     if not Error.is_error(_computer):
         return NameBusy.json_alone("name")
-    
+
     new_hash_key = sha256((action["username"] + action["name"] + str(randint(0, 100))).encode()).hexdigest()
 
     print(f"New hash key: {new_hash_key}")
@@ -124,7 +132,7 @@ async def ping_error(*args, **kwargs):
 @Method.method_callback("computer.button.add")
 @MethodSupport.get_computer()
 async def computer_add_button(controller: ComputerController, conn, action,
-        _computer: computer.Computer):
+                              _computer: computer.Computer):
     _computer.add_button(action["button_name"], action["button_text"])
     return {"result": True}
 
@@ -150,9 +158,9 @@ async def user_register(controller, conn, action, database: Database):
 async def user_get_computers(controller: ComputerController, conn, action):
     if action["username"] not in controller.computers:
         return {"result": []}
-    
+
     return {"result": [comp.json()
-        for _, comp in controller.computers[action["username"]].items()]}
+                       for _, comp in controller.computers[action["username"]].items()]}
 
 
 @Method.method_callback("computer.get_info")
@@ -170,16 +178,16 @@ async def get_events(controller, conn, action, _computer: computer.Computer):
 
 @Method.method_callback("computer.disconnect")
 @MethodSupport.get_computer()
-async def disconnect(controller: ComputerController, conn, 
-        action, _computer: computer.Computer):
+async def disconnect(controller: ComputerController, conn,
+                     action, _computer: computer.Computer):
     await controller.disconnect_computer(_computer.username, _computer.name)
     return {"result": True}
 
 
 class MethodParser:
     @staticmethod
-    async def parse_action(_controller: ComputerController, 
-            conn: connection.Connection, action: dict):
+    async def parse_action(_controller: ComputerController,
+                           conn: connection.Connection, action: dict):
         error = validate_dict(action, "method")
 
         if error:
@@ -200,21 +208,18 @@ class MethodParser:
 
         name_error = validate_dict(action, "name")
         hash_key_error = (validate_dict(action, "name", "c_hash_key") or
-                          await _controller.check_computer_hash_key(action["username"], action["name"], action["hash_key"]))
+                          await _controller.check_computer_hash_key(action["username"], action["name"],
+                                                                    action["hash_key"]))
 
-        computer = await _controller.get_computer_by_name(action["username"], action["name"]) if not name_error else UnknownComputer
-        computer_error = computer if Error.is_error(computer) else None
+        _computer = await _controller.get_computer_by_name(action["username"],
+                                                           action["name"]) if not name_error else UnknownComputer
+        # computer_error = _computer if Error.is_error(_computer) else None
 
         if method.access_level:
             if conn.access_level < method.access_level:
                 return NotEnoughtAccessLevel.json_alone()
-            if conn.access_level == 0 and hash_key_error:
-                d_print(hash_key_error)
-                return hash_key_error.json_alone()
 
         return await method.call_method(_controller, conn, action)
-
-        print(method, "Method not found!")
 
 
 class MethodBox(Enum):
@@ -236,18 +241,18 @@ class MethodBox(Enum):
 
 
 class Methods(MethodBox):
-    CONNECT = Method("computer.connect", "name", need_login=False)
+    CONNECT = Method("computer.connect", "name", access_level=0)
     DISCONNECT = Method("computer.disconnect")
-    PING = Method("computer.ping", need_login=False)
-    PING_ERROR = Method("computer.ping_error", need_login=False)
+    PING = Method("computer.ping", access_level=0)
+    PING_ERROR = Method("computer.ping_error", access_level=0)
 
     BUTTON_ADD = Method("computer.button.add", "name", "button_name", "button_text")
     BUTTON_CLICK = Method("computer.button.click", "name", "button_name")
 
     EVENTS = Method("computer.get_events", "name")
     INFO = Method("computer.get_info", "name")
-    
+
 
 class UserMethods(MethodBox):
-    REGISTER = Method("user.register", "username", "password", need_login=False)
-    GET_COMPUTERS = Method("user.ge0t_computers", "username", "password", need_login=False)
+    REGISTER = Method("user.register", "username", "password", access_level=0)
+    GET_COMPUTERS = Method("user.ge0t_computers", "username", "password", access_level=0)

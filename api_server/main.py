@@ -31,6 +31,9 @@ class Body:
         for i in body:
             setattr(self, i, body[i])
 
+    def __contains__(self, item):
+        return True if (self, item) else False
+
     def dict(self):
         return self._dict.copy()
 
@@ -60,13 +63,18 @@ async def api(body: dict):
         if await db.check_user_login(connection.login):
             connection.registered_user = True
 
+    if "name" in body:
+        _error = await comp_controller.check_computer_hash_key(body.username, body.name, body.computer_hash_key)
+        if Error.is_error(_error):
+            return _error.json_alone()
+        connection.access_level = 1
+
     if body.password:
         if await db.check_user(body.username, body.password):
             connection.access_level = 2
     elif body.hash_key:
-        pass_auth = False
         if await db.check_hash_key(body.username, body.hash_key):
-            connection.access_level = 1
+            connection.access_level = 2
 
     res = await methods.MethodParser.parse_action(comp_controller, connection, body.dict())
     d_print("DEBUG RES:", res)

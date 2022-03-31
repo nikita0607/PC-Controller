@@ -11,7 +11,7 @@ from database import Database
 from hashlib import sha256
 from random import randint
 
-from typing import Dict, Union
+from typing import Dict, Union, Type
 
 
 class ComputerController:
@@ -26,10 +26,14 @@ class ComputerController:
         self.computers: Dict[str, Dict[str, Computer]] = {}
         self.db = Database()
 
-    async def get_computer_by_name(self, username: str, name: str) -> Union[Computer, APIErrorInit]:
+    async def get_computer_by_name(self, username: str, name: str) -> Computer | Type[UnknownComputer]:
         if username in self.computers and name in self.computers[username]:
             return self.computers[username][name]
-        return UnknownComputer()
+        return UnknownComputer
+
+    async def get_computer_with_hash_key(self, username: str, name: str, c_hash_key: str) -> Union[Computer, APIError]:
+        _computer = await self.get_computer_by_name(username, name)
+        return _computer if _computer.hash_key == c_hash_key else WrongHashKey
 
     async def disconnect_computer(self, username, name):
         del self.computers[username][name]
