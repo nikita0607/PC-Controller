@@ -28,7 +28,7 @@ class Event:
     def __init__(self, _id: int):
         self.id = _id
 
-    def to_dict(self) -> dict:
+    def json(self) -> dict:
         _dict = {i: getattr(self, i).json() for i in self.__dict__ if isinstance(self.__dict__[i], EventValue)}
         _dict["type"] = self.type
         _dict["id"] = self.id
@@ -41,11 +41,7 @@ class ButtonClickEvent(Event):
 
     def __init__(self, _id: int, button_name, click_count=0):
         super().__init__(_id)
-        self.click_count = EventValue(0)
         self.name = EventValue(button_name)
-
-    def add_click(self):
-        self.click_count.value += 1
 
 
 class Computer:
@@ -65,11 +61,7 @@ class Computer:
 
     def button_click(self, button_name: str) -> bool:
         if button_name in self.buttons:
-            if len(self.events) and isinstance(self.events[-1], ButtonClickEvent):
-                self.events[-1].add_click()
-            else:
-                self.events.append(ButtonClickEvent(self.get_new_id(), button_name))
-                self.events[-1].add_click()
+            self.events.append(ButtonClickEvent(self.get_new_id(), button_name))
             return True
         return False
 
@@ -83,7 +75,7 @@ class Computer:
             if _count > count:
                 break
             if event.id >= start_id:
-                _events.append(event.to_dict())
+                _events.append(event.json())
                 count += 1
 
         return _events

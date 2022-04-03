@@ -1,4 +1,4 @@
-DEBUG = True
+DEBUG = False
 
 HOST = ""
 PORT = 8000
