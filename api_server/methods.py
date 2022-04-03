@@ -41,12 +41,13 @@ class MethodSupport:
                         action["username"],
                         action["for_name"])
 
-                else:
+                elif "c_hash_key" in action:
                     _computer = await controller.get_computer_with_hashkey(
                         action["username"],
                         action["name"],
                         action["c_hash_key"])
-
+                else:
+                    return WrongHashKey.json_alone()
 
                 if Error.is_error(_computer) and raise_not_found:
                     return _computer.json_alone()
@@ -96,13 +97,12 @@ class Method:
 
 
 @Method.method_callback("computer.connect")
-@MethodSupport.get_computer(False)
-async def computer_connect(controller, conn, action: dict, _computer):
+async def computer_connect(controller: ComputerController, conn, action: dict):
     print("connect")
     if not conn.registered_user:
         return WrongLoginData.json_alone("username")
 
-    if not Error.is_error(_computer):
+    if controller.check_computer(action["username"], action["name"]) is None:
         return NameBusy.json_alone("name")
 
     new_hash_key = sha256((action["username"] + action["name"] + str(randint(0, 100))).encode()).hexdigest()
@@ -116,7 +116,7 @@ async def computer_connect(controller, conn, action: dict, _computer):
 
     controller.computers[_computer.username][_computer.name] = _computer
 
-    return {"result": True, "hash_key": new_hash_key}
+    return {"result": True, "c_hash_key": new_hash_key}
 
 
 @Method.method_callback("computer.ping")
@@ -191,7 +191,7 @@ class MethodParser:
         error = validate_dict(action, "method")
 
         if error:
-            print("Error: ", error)
+            d_print("Error: ", error)
             return error
 
         _method = action["method"]
@@ -216,6 +216,10 @@ class MethodParser:
         # computer_error = _computer if Error.is_error(_computer) else None
 
         if method.access_level:
+            if "c_hash_key" in action:
+                _error = _controller.check_computer_hash_key(action["username"], action["name"], action["c_hash_key"])
+                if Error.is_error(_error):
+                    return _error.json_alone()
             if conn.access_level < method.access_level:
                 return NotEnoughtAccessLevel.json_alone()
 
@@ -255,4 +259,4 @@ class Methods(MethodBox):
 
 class UserMethods(MethodBox):
     REGISTER = Method("user.register", "username", "password", access_level=0)
-    GET_COMPUTERS = Method("user.ge0t_computers", "username", "password", access_level=0)
+    GET_COMPUTERS = Method("user.get_computers", "username", "password", access_level=0)

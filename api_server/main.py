@@ -23,7 +23,7 @@ class Body:
     password: str
 
     hash_key: str
-    computer_hash_key: str
+    c_hash_key: str = ''
 
     def __init__(self, body: dict):
         self._dict = body.copy()
@@ -52,6 +52,7 @@ def api_doc():
 
 @app.post("/api")
 async def api(body: dict):
+    d_print(body)
     _error = validate_dict(body, "method", "username")
     if _error:
         return _error.json_alone()
@@ -64,17 +65,20 @@ async def api(body: dict):
             connection.registered_user = True
 
     if "name" in body:
-        _error = await comp_controller.check_computer_hash_key(body.username, body.name, body.computer_hash_key)
-        if Error.is_error(_error):
-            return _error.json_alone()
-        connection.access_level = 1
+        _error = await comp_controller.check_computer_hash_key(body.username, body.name, body.c_hash_key)
+        if not Error.is_error(_error):
+            connection.access_level = 1
 
     if body.password:
         if await db.check_user(body.username, body.password):
             connection.access_level = 2
+        else:
+            return WrongLoginData.json_alone()
     elif body.hash_key:
         if await db.check_hash_key(body.username, body.hash_key):
             connection.access_level = 2
+        else:
+            return WrongHashKey.json_alone()
 
     res = await methods.MethodParser.parse_action(comp_controller, connection, body.dict())
     d_print("DEBUG RES:", res)

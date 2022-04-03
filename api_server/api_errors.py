@@ -9,7 +9,7 @@ from pydantic.error_wrappers import ErrorWrapper
 class Error:
     @classmethod
     def is_error(cls, other):
-        if any(map(lambda x: isinstance(other, x), (APIError, APIErrorList, APIErrorInit))):
+        if hasattr(other, "is_error"):
             return True
         return False
 
@@ -18,6 +18,7 @@ class APIError(Exception):
     msg = "Unknown error"
     type = "unknown_error"
     code = 0
+    is_error = True
 
     def __new__(cls, loc="", _init_this=False):
         if _init_this:
@@ -41,6 +42,7 @@ class APIErrorInit(Exception):
         self.type = _type
         self.loc = loc
         self.code = code
+        self.is_error = True
 
     def json(self):
         _error = {"loc": self.loc,  "msg": self.msg, "type": self.type, "code": self.code}
@@ -54,6 +56,7 @@ class APIErrorInit(Exception):
 class APIErrorList:
     def __init__(self, *errors):
         self.errors: list[APIErrorInit] = list(errors)
+        self.is_error = True
 
     @property
     def count(self):

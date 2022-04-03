@@ -18,6 +18,9 @@ class EventValue:
     def __get__(self, *args):
         return self.value
 
+    def json(self):
+        return self.value
+
 
 class Event:
     type = "unknown"
@@ -26,7 +29,7 @@ class Event:
         self.id = _id
 
     def to_dict(self) -> dict:
-        _dict = {i: getattr(self, i) for i in self.__dict__ if isinstance(self.__dict__[i], EventValue)}
+        _dict = {i: getattr(self, i).json() for i in self.__dict__ if isinstance(self.__dict__[i], EventValue)}
         _dict["type"] = self.type
         _dict["id"] = self.id
 

@@ -31,7 +31,7 @@ class ComputerController:
             return self.computers[username][name]
         return UnknownComputer
 
-    async def get_computer_with_hash_key(self, username: str, name: str, c_hash_key: str) -> Union[Computer, APIError]:
+    async def get_computer_with_hashkey(self, username: str, name: str, c_hash_key: str) -> Union[Computer, APIError]:
         _computer = await self.get_computer_by_name(username, name)
         return _computer if _computer.hash_key == c_hash_key else WrongHashKey
 
@@ -46,3 +46,8 @@ class ComputerController:
 
         if hash_key != _comp.hash_key:
             return WrongHashKey
+
+    async def check_computer(self, username: str, name: str) -> Union[APIError, None]:
+        _comp = await self.get_computer_by_name(username, name)
+        if Error.is_error(_comp):
+            return _comp
