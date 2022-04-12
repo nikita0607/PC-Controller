@@ -32,7 +32,7 @@ class Body:
             setattr(self, i, body[i])
 
     def __contains__(self, item):
-        return True if (self, item) else False
+        return True if hasattr(self, item) else False
 
     def dict(self):
         return self._dict.copy()
@@ -72,8 +72,6 @@ async def api(body: dict):
     if body.password:
         if await db.check_user(body.username, body.password):
             connection.access_level = 2
-        else:
-            return WrongLoginData.json_alone()
     elif body.hash_key:
         if await db.check_hash_key(body.username, body.hash_key):
             connection.access_level = 2

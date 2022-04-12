@@ -147,7 +147,7 @@ async def computer_add_button(controller, conn, action, _computer: computer.Comp
 @Method.method_callback("user.register")
 @MethodSupport.get_database
 async def user_register(controller, conn, action, database: Database):
-    if conn.is_user:
+    if conn.registered_user:
         return NameBusy.json_alone()
 
     await database.new_user(conn.login, action["password"])
