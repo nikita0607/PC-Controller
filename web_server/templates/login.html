@@ -1,26 +1,16 @@
 {% extends 'index.html' %}
 
-{% block head %}
-    <title>Logger in</title>
-{% endblock %}
 
 {% block body %}
-    <div class="auth">
-        <form method="post">
-            <div class="form-group has-success has-feedback">
-                <!--<label class="control-label" for="inputSuccessPass"><i>*Пароль должен содержать не менее 5 символов</i></label> -->
-                <input type="text" class="form-control" name="login" placeholder="Логин"><br/>
-            </div>
+        <script>
+            function enter() {
+                console.log("Try login!");
+            };
+        </script>
 
-            <div class="form-group has-success has-feedback">
-                <input type="password" class="form-control"  name="password" placeholder="Пароль"><br/>
-            </div>
-
-            {% if wrong %}
-                <span class="error-text">Неверный логин или пароль</span><br/>
-            {% endif %}
-
-            <input type="submit" title="Logger in"><br/>
+        <form>
+            <input name="login"/>
+            <input type='password' name="password"/>
+            <input onclick='enter'/>
         </form>
-    </div>
 {% endblock %}
