@@ -1,13 +1,30 @@
 #!/bin/sh
 
-# Set source and target directories
 
-# if an argument is given it is used to select which fonts to install
-
-
-if psython3 -m pip install -r requirements.txt ; then
-    echo "Successfuly installed libraries!"
+if python3 --version ; then
+    python="python3"
 else
-    echo "Set python destination: " ; read python
-    $python -m pip install -r requirements.txt
+    echo "Set destination for python" ; read python
 fi
+
+
+if cd env ; then
+    cd ..
+else
+    echo Create virtual environment
+    $python -m venv env
+    
+    cp ./env/bin/activate ./env/bin/old_activate
+
+    echo "export API_HOST=127.0.0.1" >> ./env/bin/activate
+    echo "export API_PORT=8000" >> ./env/bin/activate
+    
+    echo "export DATABASE_HOST=127.0.0.1" >> ./env/bin/activate
+    echo "export DATABASE_PORT=8001" >> ./env/bin/activate
+
+fi
+
+
+
+. ./env/bin/activate
+# python3 -m pip install -r requirements.txt

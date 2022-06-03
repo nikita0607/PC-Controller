@@ -1,12 +1,14 @@
-import computer
-
-import connection
-from debug import d_print
-
-from controller import ComputerController
-
 from typing import Union, List
 from enum import Enum
+
+from hashlib import sha256
+from random import randint
+
+import computer
+import connection
+
+from debug import d_print
+from controller import ComputerController
 
 from api_errors import Error, APIError, APIErrorList, NameBusy, UnknownComputer, MethodNotFound
 from api_errors import WrongHashKey, WrongLoginData, validate_dict, APIErrorInit
@@ -14,8 +16,6 @@ from api_errors import NotEnoughtAccessLevel
 
 from database import Database
 
-from hashlib import sha256
-from random import randint
 
 
 class MethodSupport:
@@ -102,7 +102,7 @@ async def computer_connect(controller: ComputerController, conn, action: dict):
     if not conn.registered_user:
         return WrongLoginData.json_alone("username")
 
-    if controller.check_computer(action["username"], action["name"]) is None:
+    if await controller.check_computer(action["username"], action["name"]) is None:
         return NameBusy.json_alone("name")
 
     new_hash_key = sha256((action["username"] + action["name"] + str(randint(0, 100))).encode()).hexdigest()

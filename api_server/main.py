@@ -1,16 +1,15 @@
-import json
-import os
-import methods
-import controller
+"""
+Enter dot to api_server
+"""
+
+from typing import Dict
 
 from fastapi import FastAPI
 
-from pydantic import BaseModel
-from typing import Dict
+import methods
+import controller
 
-from config import *
-
-from api_errors import *
+from api_errors import null_missed_dict, validate_dict, Error, WrongHashKey
 from connection import Connection
 from database import Database
 
@@ -18,12 +17,16 @@ from debug import d_print
 
 
 class Body:
+    """
+    Body of client response
+    """
+
     method: str
     username: str
     password: str
 
     hash_key: str
-    c_hash_key: str = ''
+    c_hash_key: str = ""
 
     def __init__(self, body: dict):
         self._dict = body.copy()
@@ -32,9 +35,12 @@ class Body:
             setattr(self, i, body[i])
 
     def __contains__(self, item):
-        return True if hasattr(self, item) else False
+        return hasattr(self, item)
 
     def dict(self):
+        """
+        Translate request-object to raw dict
+        """
         return self._dict.copy()
 
 
@@ -47,11 +53,22 @@ hash_cash: Dict[str, str] = {}
 
 @app.get("/api-doc")
 def api_doc():
+    """
+    Documenration page
+    """
+
     return "Welcome to the doc!"
 
 
 @app.post("/api")
 async def api(body: dict):
+    """
+    Processing user's api request
+
+    This function check some fields, setup connection-info and call
+    method-parser function.
+    """
+
     d_print(body)
     _error = validate_dict(body, "method", "username")
     if _error:
@@ -65,7 +82,9 @@ async def api(body: dict):
             connection.registered_user = True
 
     if "name" in body:
-        _error = await comp_controller.check_computer_hash_key(body.username, body.name, body.c_hash_key)
+        _error = await comp_controller.check_computer_hash_key(
+            body.username, body.name, body.c_hash_key
+        )
         if not Error.is_error(_error):
             connection.access_level = 1
 
@@ -78,6 +97,8 @@ async def api(body: dict):
         else:
             return WrongHashKey.json_alone()
 
-    res = await methods.MethodParser.parse_action(comp_controller, connection, body.dict())
+    res = await methods.MethodParser.parse_action(
+        comp_controller, connection, body.dict()
+    )
     d_print("DEBUG RES:", res)
     return res

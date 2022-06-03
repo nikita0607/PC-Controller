@@ -26,12 +26,12 @@ class ComputerController:
         self.computers: Dict[str, Dict[str, Computer]] = {}
         self.db = Database()
 
-    async def get_computer_by_name(self, username: str, name: str) -> Computer | Type[UnknownComputer]:
+    async def get_computer_by_name(self, username: str, name: str) -> Union[Computer, Type[UnknownComputer]]:
         if username in self.computers and name in self.computers[username]:
             return self.computers[username][name]
         return UnknownComputer
 
-    async def get_computer_with_hashkey(self, username: str, name: str, c_hash_key: str) -> Union[Computer, APIError]:
+    async def get_computer_with_hashkey(self, username: str, name: str, c_hash_key: str) -> Union[Computer, Type[APIError]]:
         _computer = await self.get_computer_by_name(username, name)
         return _computer if _computer.hash_key == c_hash_key else WrongHashKey
 

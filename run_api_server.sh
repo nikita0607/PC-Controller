@@ -9,5 +9,6 @@ else
 fi
 
 echo $python
+
 cd api_server
 $python -m uvicorn main:app --host $API_HOST --port $API_PORT

@@ -1,14 +1,6 @@
-import asyncio
+from typing import List, Dict, Union
 
 from connection import Connection
-
-from api_errors import Error,  APIError, APIErrorList, NameBusy, UnknownComputer, MethodNotFound
-from api_errors import WrongHashKey, WrongLoginData, validate_dict, APIErrorInit
-
-from database import Database
-
-from hashlib import sha256
-from random import randint
 
 
 class EventValue:
@@ -50,8 +42,8 @@ class Computer:
         self.name = name
         self.hash_key = hash_key
 
-        self.buttons: dict[str, str] = {}
-        self.events: list[Event | ButtonClickEvent] = []
+        self.buttons: Dict[str, str] = {}
+        self.events: List[Union[Event | ButtonClickEvent]] = []
 
     def add_button(self, name: str, text: str) -> None:
         self.buttons[name] = text
@@ -62,7 +54,6 @@ class Computer:
     def button_click(self, button_name: str) -> bool:
         if button_name in self.buttons:
             self.events.append(ButtonClickEvent(self.get_new_id(), button_name))
-            return True
         return False
 
     def json(self):
