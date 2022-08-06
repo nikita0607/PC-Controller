@@ -11,6 +11,7 @@ from debug import d_print
 
 class Database:
     db_object = None
+    _init = False
 
     def __new__(cls):
         if cls.db_object is None:
@@ -18,6 +19,10 @@ class Database:
         return cls.db_object
 
     def __init__(self):
+        if self._init:
+            return
+        self._init = True
+
         self.user_count = 0
         self.user_hash_cache = {}
 

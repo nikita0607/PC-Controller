@@ -7,9 +7,12 @@ from typing import Dict
 from fastapi import FastAPI
 
 import methods
-import controller
 
-from api_errors import null_missed_dict, validate_dict, Error, WrongHashKey
+from computers import ComputerController
+
+from api_errors import null_missed_dict, validate_dict, Error
+from api_errors import WrongHashKey, WrongLoginData
+
 from connection import Connection
 from database import Database
 
@@ -26,7 +29,7 @@ class Body:
     password: str
 
     hash_key: str
-    c_hash_key: str = ""
+    c_hash_key: str = None
 
     def __init__(self, body: dict):
         self._dict = body.copy()
@@ -45,7 +48,6 @@ class Body:
 
 
 app = FastAPI()
-comp_controller = controller.ComputerController()
 db = Database()
 
 hash_cash: Dict[str, str] = {}
@@ -82,23 +84,21 @@ async def api(body: dict):
             connection.registered_user = True
 
     if "name" in body:
-        _error = await comp_controller.check_computer_hash_key(
-            body.username, body.name, body.c_hash_key
-        )
-        if not Error.is_error(_error):
-            connection.access_level = 1
+        if body.c_hash_key:
+            _error = await comp_check_computer_hash_key(
+                body.username, body.name, body.c_hash_key
+            )
+            if not Error.is_error(_error):
+                connection.access_level = 1
+            else:
+                return WrongHashKey.json_alone()
 
     if body.password:
         if await db.check_user(body.username, body.password):
             connection.access_level = 2
-    elif body.hash_key:
-        if await db.check_hash_key(body.username, body.hash_key):
-            connection.access_level = 2
         else:
-            return WrongHashKey.json_alone()
+            return WrongLoginData.json_alone()
 
-    res = await methods.MethodParser.parse_action(
-        comp_controller, connection, body.dict()
-    )
+    res = await methods.MethodParser.parse_action(connection, body.dict())
     d_print("DEBUG RES:", res)
     return res

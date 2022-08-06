@@ -4,11 +4,11 @@ from enum import Enum
 from hashlib import sha256
 from random import randint
 
-import computer
 import connection
 
+from computers import Computer, ComputerController
+
 from debug import d_print
-from controller import ComputerController
 
 from api_errors import Error, APIError, APIErrorList, NameBusy, UnknownComputer, MethodNotFound
 from api_errors import WrongHashKey, WrongLoginData, validate_dict, APIErrorInit
@@ -17,13 +17,12 @@ from api_errors import NotEnoughtAccessLevel
 from database import Database
 
 
-
 class MethodSupport:
     @staticmethod
     def get_database(callback):
-        async def wrapper(controller, conn, action, *args,
+        async def wrapper(conn, action, *args,
                           **kwargs):
-            return await callback(controller, conn, action, *args, **kwargs,
+            return await callback(conn, action, *args, **kwargs,
                                   database=Database())
 
         return wrapper
@@ -33,7 +32,8 @@ class MethodSupport:
         """ Decorator return computer with recieved 'username' and 'name' """
 
         def dec(callback):
-            async def wrapper(controller, conn, action, *args, **kwargs):
+            async def wrapper(conn, action, *args, **kwargs):
+                controller = ComputerController()
 
                 if "for_name" in action:
 
@@ -59,15 +59,24 @@ class MethodSupport:
 
         return dec
 
+    @staticmethod
+    def get_controller(controller_first: bool = False):
+        def dec(callback):
+            def wrapper(conn, action, *args, **kwargs):
+                if controller_first:
+                    return callback(ComputerController(), conn, action, *args, **kwargs)
+                return callback(conn, action, *args, **kwargs, controller=ComputerController())
+            return wrapper
+        return dec
+
 
 class Method:
-    methods_callbacks = {}
-
     def __init__(self, string, *required_values, access_level: int = 1):
         self.string = string
         self.required_values = list(required_values)
         self.access_level = access_level
-
+        self.callback = None
+    
     def __str__(self):
         return self.string
 
@@ -78,25 +87,58 @@ class Method:
         res = validate_dict(_dict, *self.required_values)
         return res if res else self
 
+    def method_callback(self, callback):
+        self.callback = callback
+        return callback
+
+    async def call(self, conn, action: dict):
+        return await self.callback(conn, action)
+
+
+class MethodBox(Enum):
+    pass
+
+
+class Methods:
+    method_boxes = {}
+    
     @classmethod
-    def method_callback(cls, method: str):
-        def wrapper(callback):
-            cls.methods_callbacks[method] = callback
+    def method_box(cls, prefix: str):
+        def dec(callback):
+            cls.method_boxes[prefix] = callback
             return callback
-
-        return wrapper
-
-    async def call_method(self, controller, conn, action: dict):
-        return await self._call_method(self.string, controller, conn, action)
+        return dec
 
     @classmethod
-    async def _call_method(cls, method: str, controller, conn, action):
-        if isinstance(method, Method):
-            method = method.string
-        return await cls.methods_callbacks[method](controller, conn, action)
+    async def find_and_validate(cls, _dict) -> Union[APIErrorList, Method, None]:
+        str_method = _dict["method"]
+        prefix, str_method = str_method.split('.')
+
+        for method in cls.method_boxes[prefix]:
+            if method.value.string == str_method:
+                return method.value.validate(_dict)
 
 
-@Method.method_callback("computer.connect")
+@Methods.method_box("computer")
+class ComputerMethods(MethodBox):
+    CONNECT = Method("connect", "name", access_level=0)
+    DISCONNECT = Method("disconnect")
+    PING = Method("ping", access_level=0)
+    PING_ERROR = Method("ping_error", access_level=0)
+    BUTTON_ADD = Method("button.add", "name", "button_name", "button_text")
+    BUTTON_CLICK = Method("button.click", "name", "button_name")
+
+    GET_EVENTS = Method("get_events", "name")
+    GET_INFO = Method("get_info", "name")
+
+@Methods.method_box("user")
+class UserMethods(MethodBox):
+    REGISTER = Method("register", "username", "password", access_level=0)
+    GET_COMPUTERS = Method("get_computers", "username", "password", access_level=0)
+
+
+@ComputerMethods.CONNECT.value.method_callback
+@MethodSupport.get_controller(True)
 async def computer_connect(controller: ComputerController, conn, action: dict):
     print("connect")
     if not conn.registered_user:
@@ -105,48 +147,38 @@ async def computer_connect(controller: ComputerController, conn, action: dict):
     if await controller.check_computer(action["username"], action["name"]) is None:
         return NameBusy.json_alone("name")
 
-    new_hash_key = sha256((action["username"] + action["name"] + str(randint(0, 100))).encode()).hexdigest()
-
-    print(f"New hash key: {new_hash_key}")
-
-    _computer = computer.Computer(conn.login, action["name"], new_hash_key)
-
-    if conn.login not in controller.computers:
-        controller.computers[conn.login] = {}
-
-    controller.computers[_computer.username][_computer.name] = _computer
+    controller.connect_computer(action["username"], action["name"])
 
     return {"result": True, "c_hash_key": new_hash_key}
 
 
-@Method.method_callback("computer.ping")
+@ComputerMethods.PING.value.method_callback
 async def ping(*args, **kwargs):
     return {"result": True}
 
 
-@Method.method_callback("computer.ping_error")
+@ComputerMethods.PING_ERROR.value.method_callback
 async def ping_error(*args, **kwargs):
     return APIError.json_alone()
 
 
-@Method.method_callback("computer.button.add")
+@ComputerMethods.BUTTON_ADD.value.method_callback
 @MethodSupport.get_computer()
-async def computer_add_button(controller: ComputerController, conn, action,
-                              _computer: computer.Computer):
+async def computer_add_button(conn, action, _computer: Computer):
     _computer.add_button(action["button_name"], action["button_text"])
     return {"result": True}
 
 
-@Method.method_callback("computer.button.click")
+@ComputerMethods.BUTTON_CLICK.value.method_callback
 @MethodSupport.get_computer()
-async def computer_add_button(controller, conn, action, _computer: computer.Computer):
+async def computer_add_button(conn, action, _computer: Computer):
     _computer.button_click(action["button_name"])
     return {"result": True}
 
 
-@Method.method_callback("user.register")
+@UserMethods.REGISTER.value.method_callback
 @MethodSupport.get_database
-async def user_register(controller, conn, action, database: Database):
+async def user_register(conn, action, database: Database):
     if conn.registered_user:
         return NameBusy.json_alone()
 
@@ -154,7 +186,8 @@ async def user_register(controller, conn, action, database: Database):
     return {"result": True}
 
 
-@Method.method_callback("user.get_computers")
+@UserMethods.GET_COMPUTERS.value.method_callback
+@MethodSupport.get_controller(True)
 async def user_get_computers(controller: ComputerController, conn, action):
     if action["username"] not in controller.computers:
         return {"result": []}
@@ -163,40 +196,34 @@ async def user_get_computers(controller: ComputerController, conn, action):
                        for _, comp in controller.computers[action["username"]].items()]}
 
 
-@Method.method_callback("computer.get_info")
+@ComputerMethods.GET_INFO.value.method_callback
 @MethodSupport.get_computer()
-async def computer_info(controller, conn, action, _computer: computer.Computer):
+async def computer_info(controller, conn, action, _computer: Computer):
     return {"result": _computer.json()}
 
 
-@Method.method_callback("computer.get_events")
+@ComputerMethods.GET_EVENTS.value.method_callback
 @MethodSupport.get_computer()
-async def get_events(controller, conn, action, _computer: computer.Computer):
+async def get_events(conn, action, _computer: Computer):
     _id = action["start_id"] if "start_id" in action else 0
     return {"result": _computer.json_events(start_id=_id)}
 
 
-@Method.method_callback("computer.disconnect")
+@ComputerMethods.DISCONNECT.value.method_callback
 @MethodSupport.get_computer()
+@MethodSupport.get_controller(True)
 async def disconnect(controller: ComputerController, conn,
-                     action, _computer: computer.Computer):
+                     action, _computer: Computer):
     await controller.disconnect_computer(_computer.username, _computer.name)
     return {"result": True}
 
 
 class MethodParser:
     @staticmethod
-    async def parse_action(_controller: ComputerController,
-                           conn: connection.Connection, action: dict):
-        error = validate_dict(action, "method")
-
-        if error:
-            d_print("Error: ", error)
-            return error
-
+    async def parse_action(conn: connection.Connection, action: dict):
         _method = action["method"]
 
-        validate_result = await Methods.or_validate(action, Methods, UserMethods)
+        validate_result = await Methods.find_and_validate(_dict)
 
         if validate_result is None:
             return MethodNotFound.json_alone()
@@ -213,7 +240,6 @@ class MethodParser:
 
         _computer = await _controller.get_computer_by_name(action["username"],
                                                            action["name"]) if not name_error else UnknownComputer
-        # computer_error = _computer if Error.is_error(_computer) else None
 
         if method.access_level:
             if "c_hash_key" in action:
@@ -225,38 +251,3 @@ class MethodParser:
 
         return await method.call_method(_controller, conn, action)
 
-
-class MethodBox(Enum):
-    @classmethod
-    async def find_and_validate(cls, _dict) -> Union[APIErrorList, Method, None]:
-        for method in cls:
-            if method.value.string == _dict["method"]:
-                return method.value.validate(_dict)
-
-    @classmethod
-    async def or_validate(cls, _dict, *methods) -> Union[Method, APIErrorList, None]:
-        for m in methods[:-1]:
-            val = await m.find_and_validate(_dict)
-            if isinstance(val, Method):
-                return val
-            if Error.is_error(val):
-                return val
-        return await methods[-1].find_and_validate(_dict)
-
-
-class Methods(MethodBox):
-    CONNECT = Method("computer.connect", "name", access_level=0)
-    DISCONNECT = Method("computer.disconnect")
-    PING = Method("computer.ping", access_level=0)
-    PING_ERROR = Method("computer.ping_error", access_level=0)
-
-    BUTTON_ADD = Method("computer.button.add", "name", "button_name", "button_text")
-    BUTTON_CLICK = Method("computer.button.click", "name", "button_name")
-
-    EVENTS = Method("computer.get_events", "name")
-    INFO = Method("computer.get_info", "name")
-
-
-class UserMethods(MethodBox):
-    REGISTER = Method("user.register", "username", "password", access_level=0)
-    GET_COMPUTERS = Method("user.get_computers", "username", "password", access_level=0)
