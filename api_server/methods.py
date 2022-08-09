@@ -96,7 +96,9 @@ class Method:
 
 
 class MethodBox(Enum):
-    pass
+    @classmethod
+    def check(cls) -> bool:
+        return all(map(lambda cl: cl.value.callback, cls))
 
 
 class Methods:
@@ -104,8 +106,8 @@ class Methods:
     
     @classmethod
     def method_box(cls, prefix: str):
-        def dec(callback):
-            cls.method_boxes[prefix] = callback
+        def dec(mbox):
+            cls.add_method_box(prefix, mbox)
             return callback
         return dec
 
@@ -118,8 +120,14 @@ class Methods:
             if method.value.string == str_method:
                 return method.value.validate(_dict)
 
+    @classmethod
+    def check(cls) -> Union[MethodBox, None]:
+        for _, mbox in cls.method_boxes.items():
+            if not mbox.check():
+                return cls
 
-@Methods.method_box("computer")
+
+@Methods.method_box("user")
 class ComputerMethods(MethodBox):
     CONNECT = Method("connect", "name", access_level=0)
     DISCONNECT = Method("disconnect")
@@ -130,6 +138,8 @@ class ComputerMethods(MethodBox):
 
     GET_EVENTS = Method("get_events", "name")
     GET_INFO = Method("get_info", "name")
+    TEST = Method("test")
+
 
 @Methods.method_box("user")
 class UserMethods(MethodBox):
@@ -251,3 +261,6 @@ class MethodParser:
 
         return await method.call_method(_controller, conn, action)
 
+res = Methods.check()
+if res:
+    raise AttributeError(f"Not all methods in {res} has callback realisation")
