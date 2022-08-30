@@ -7,18 +7,16 @@
 ```shell
 git clone https://github.com/nikita0607/PC-Controller.git
 cd PC-Controller
-python3 -m pip install -r requirements.txt
 ```
 
-2) Запустите сервер с БД с помощью uvicorn в папке `database_server`
+### Для WINDOWS
+
+```shell
+```
+
+3) Запустите сервер с БД с помощью uvicorn в папке `database_server`
 ```shell
 uvicorn main:app --host YOUR_IP --port 8001
-```
-
-3) Откройте `config.py` в папке `api_server` и укажите IP сервера с БД
-```python
-..
-DATABASE_HOST = "http://YOUR_IP:8001"
 ```
 
 4) Запустите API сервер

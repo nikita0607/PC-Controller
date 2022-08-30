@@ -13,10 +13,15 @@ if cd env ; then
 else
     echo Create virtual environment
     $python -m venv env
-    
+fi
+
+if cat ./env/bin ; then
+  :
+else
+    echo "tmp file" >> env/tmp.txt
+    echo "Update activate"
+
     cp ./env/bin/activate ./env/bin/old_activate
-    
-    echo "export PYTHON_DESTI=$python" >> ./env/bin/activate
 
     echo "export API_HOST=127.0.0.1" >> ./env/bin/activate
     echo "export API_PORT=8000" >> ./env/bin/activate
@@ -27,6 +32,5 @@ else
 fi
 
 
-
 . ./env/bin/activate
-$python -m pip install -r requirements.txt
+python -m pip install -r requirements.txt
