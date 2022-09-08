@@ -4,6 +4,8 @@ from typing import List, Dict, Union, Type
 
 from connection import Connection
 
+from database import Database
+
 from api_errors import Error,  APIError, APIErrorList, NameBusy, UnknownComputer, MethodNotFound
 from api_errors import WrongHashKey, WrongLoginData, validate_dict, APIErrorInit
 
@@ -116,9 +118,10 @@ class ComputerController:
     async def connect_computer(self, username, name):
         if username not in self.computers:
             self.computers[username] = {}
-        hash_key = sha256((action["username"] + action["name"] + str(randint(0, 100))).encode()).hexdigest()
+        hash_key = sha256((username + name + str(randint(0, 100))).encode()).hexdigest()
         self.computers[username][name] = Computer(username, name, hash_key)
-    
+        return self.computers[username][name]
+
     async def check_computer_hash_key(self, username: str, name: str, hash_key: str) -> Union[APIError, None]:
         _comp = await self.get_computer_by_name(username, name)
 

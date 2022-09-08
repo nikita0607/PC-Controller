@@ -56,7 +56,7 @@ hash_cash: Dict[str, str] = {}
 @app.get("/api-doc")
 def api_doc():
     """
-    Documenration page
+    Documentation page
     """
 
     return "Welcome to the doc!"
@@ -85,7 +85,7 @@ async def api(body: dict):
 
     if "name" in body:
         if body.c_hash_key:
-            _error = await comp_check_computer_hash_key(
+            _error = await ComputerController().check_computer_hash_key(
                 body.username, body.name, body.c_hash_key
             )
             if not Error.is_error(_error):

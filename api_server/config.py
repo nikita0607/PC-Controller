@@ -4,8 +4,9 @@ import os
 def get_from_env(var):
     try:
         val = os.environ[var]
-    except:
+    except KeyError:
         raise ValueError(f"{var} is not in ENV!")
+
 
 DEBUG = False
 

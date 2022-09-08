@@ -108,7 +108,7 @@ class Methods:
     def method_box(cls, prefix: str):
         def dec(mbox):
             cls.add_method_box(prefix, mbox)
-            return callback
+            return mbox
         return dec
 
     @classmethod
@@ -157,9 +157,9 @@ async def computer_connect(controller: ComputerController, conn, action: dict):
     if await controller.check_computer(action["username"], action["name"]) is None:
         return NameBusy.json_alone("name")
 
-    controller.connect_computer(action["username"], action["name"])
+    computer = await controller.connect_computer(action["username"], action["name"])
 
-    return {"result": True, "c_hash_key": new_hash_key}
+    return {"result": True, "c_hash_key": computer.hash_key}
 
 
 @ComputerMethods.PING.value.method_callback
@@ -233,7 +233,7 @@ class MethodParser:
     async def parse_action(conn: connection.Connection, action: dict):
         _method = action["method"]
 
-        validate_result = await Methods.find_and_validate(_dict)
+        validate_result = await Methods.find_and_validate(action)
 
         if validate_result is None:
             return MethodNotFound.json_alone()
@@ -242,6 +242,7 @@ class MethodParser:
             return validate_result.json_alone()
 
         method: Method = validate_result
+        _controller =  ComputerController()
 
         name_error = validate_dict(action, "name")
         hash_key_error = (validate_dict(action, "name", "c_hash_key") or
